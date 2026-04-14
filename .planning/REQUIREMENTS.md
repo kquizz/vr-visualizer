@@ -77,25 +77,25 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUD-01 | — | Pending |
-| AUD-02 | — | Pending |
-| AUD-03 | — | Pending |
-| SER-01 | — | Pending |
-| SER-02 | — | Pending |
-| SER-03 | — | Pending |
-| VR-01 | — | Pending |
-| VR-02 | — | Pending |
-| VR-03 | — | Pending |
-| VIS-01 | — | Pending |
-| VIS-02 | — | Pending |
-| INF-01 | — | Pending |
-| INF-02 | — | Pending |
+| AUD-01 | Phase 1 | Pending |
+| AUD-02 | Phase 1 | Pending |
+| AUD-03 | Phase 1 | Pending |
+| SER-01 | Phase 3 | Pending |
+| SER-02 | Phase 3 | Pending |
+| SER-03 | Phase 3 | Pending |
+| VR-01 | Phase 1 | Pending |
+| VR-02 | Phase 1 | Pending |
+| VR-03 | Phase 1 | Pending |
+| VIS-01 | Phase 2 | Pending |
+| VIS-02 | Phase 2 | Pending |
+| INF-01 | Phase 1 | Pending |
+| INF-02 | Phase 1 | Pending |
 
 **Coverage:**
 - v1 requirements: 13 total
-- Mapped to phases: 0
-- Unmapped: 13 ⚠️
+- Mapped to phases: 13
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-13*
-*Last updated: 2026-04-13 after scoping adjustment (removed beat detection, UI, mode system from v1)*
+*Last updated: 2026-04-13 -- Roadmap created, all v1 requirements mapped to phases*
