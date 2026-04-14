@@ -2,7 +2,7 @@
 
 ## Overview
 
-Three phases take this from empty Godot project to the "holy shit" moment: first, prove the PCVR + audio pipeline works with test stems; second, build the spectrum bars visualizer with per-stem visual mapping; third, wire up live Serato stems so someone wearing the headset is inside your live DJ mix.
+Three phases take this from empty Godot project to the "holy shit" moment: first, prove the PCVR + audio pipeline works with test stems; second, build the spectrum bars visualizer with per-stem visual mapping; third, wire up live Rekordbox stems so someone wearing the headset is inside your live DJ mix.
 
 ## Phases
 
@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [ ] **Phase 1: VR + Audio Foundation** - PCVR app with 4-bus stem audio, FFT analysis, and normalized audio data pipeline
 - [ ] **Phase 2: Stem Visualization** - Spectrum bars mode with per-stem visual mapping proving the full audio-to-shader pipeline
-- [ ] **Phase 3: Live Serato Integration** - Real-time Serato stem routing into Godot for live DJ visualization
+- [ ] **Phase 3: Live Rekordbox Integration** - Real-time Rekordbox stem routing into Godot for live DJ visualization
 
 ## Phase Details
 
@@ -28,11 +28,22 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. FFT spectrum data updates every frame for each audio bus, visible via debug overlay in VR
   4. AudioManager autoload exposes a normalized AudioData struct (energy, peak frequency, magnitude bands) consumed by a test shader that visibly reacts to audio
   5. Scene renders at stable 90fps on desktop GPU with no VR discomfort (no forced movement, static viewpoint)
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 01-01: TBD
-- [ ] 01-02: TBD
+- [ ] 01-01-PLAN.md -- Godot project scaffold with Mobile renderer, OpenXR, VR scene, deep space skybox, flat-screen fallback
+- [ ] 01-02-PLAN.md -- Audio bus layout, AudioData struct, AudioManager autoload with FFT analysis and sync guard
+- [ ] 01-03-PLAN.md -- ShaderBridge global uniforms, test reactive shader, debug overlay, end-to-end verification
+
+### Phase 1.1: Validate Rekordbox Stem Extraction (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 1
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 01.1 to break down)
 
 ### Phase 2: Stem Visualization
 **Goal**: A spectrum bars visualizer where each stem drives distinct visual elements, proving the creative vision of stem-separated VR visualization
@@ -47,15 +58,15 @@ Plans:
 Plans:
 - [ ] 02-01: TBD
 
-### Phase 3: Live Serato Integration
-**Goal**: Serato DJ Pro's live stem separation feeds directly into the visualizer -- the party trick works
+### Phase 3: Live Rekordbox Integration
+**Goal**: Rekordbox's live stem separation feeds directly into the visualizer -- the party trick works
 **Depends on**: Phase 2
 **Requirements**: SER-01, SER-02, SER-03
 **Success Criteria** (what must be TRUE):
-  1. Serato DJ Pro stem outputs route to Godot via virtual audio device (BlackHole or Loopback on macOS)
-  2. Each Serato stem (drums, bass, vocals, other) maps to its corresponding Godot audio bus in real-time
-  3. Visualization reacts to live Serato playback with latency under 50ms (audio change to visual response)
-  4. The end-to-end experience works: DJ plays on Serato, person in headset sees stem-reactive visualization of the live mix
+  1. Rekordbox stem outputs route to Godot via virtual audio device (BlackHole or Loopback on macOS)
+  2. Each Rekordbox stem (drums, bass, vocals, other) maps to its corresponding Godot audio bus in real-time
+  3. Visualization reacts to live Rekordbox playback with latency under 50ms (audio change to visual response)
+  4. The end-to-end experience works: DJ plays on Rekordbox, person in headset sees stem-reactive visualization of the live mix
 **Plans**: TBD
 
 Plans:
@@ -68,6 +79,6 @@ Phases execute in numeric order: 1 -> 2 -> 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. VR + Audio Foundation | 0/? | Not started | - |
+| 1. VR + Audio Foundation | 0/3 | Planning complete | - |
 | 2. Stem Visualization | 0/? | Not started | - |
-| 3. Live Serato Integration | 0/? | Not started | - |
+| 3. Live Rekordbox Integration | 0/? | Not started | - |
