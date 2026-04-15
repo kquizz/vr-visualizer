@@ -7,9 +7,9 @@
 
 ### Audio Pipeline
 
-- [ ] **AUD-01**: App plays 4 simultaneous audio streams (drums, bass, vocals, other) each on its own Godot audio bus
-- [ ] **AUD-02**: Each audio bus has FFT spectrum analysis providing per-frame frequency magnitude data
-- [ ] **AUD-03**: Audio data is normalized into a consistent struct (energy, peak frequency, magnitude bands) consumed by all visualizer modes
+- [x] **AUD-01**: App plays 4 simultaneous audio streams (drums, bass, vocals, other) each on its own Godot audio bus
+- [x] **AUD-02**: Each audio bus has FFT spectrum analysis providing per-frame frequency magnitude data
+- [x] **AUD-03**: Audio data is normalized into a consistent struct (energy, peak frequency, magnitude bands) consumed by all visualizer modes
 
 ### Rekordbox Integration
 
@@ -30,7 +30,7 @@
 
 ### Infrastructure
 
-- [ ] **INF-01**: AudioManager autoload provides normalized audio data to all modes every frame
+- [x] **INF-01**: AudioManager autoload provides normalized audio data to all modes every frame
 - [ ] **INF-02**: Shader uniform bridge passes audio data (energy, frequency bands) to GPU shaders per frame
 
 ## v2 Requirements
@@ -77,9 +77,9 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUD-01 | Phase 1 | Pending |
-| AUD-02 | Phase 1 | Pending |
-| AUD-03 | Phase 1 | Pending |
+| AUD-01 | Phase 1 | Complete |
+| AUD-02 | Phase 1 | Complete |
+| AUD-03 | Phase 1 | Complete |
 | SER-01 | Phase 3 | Pending |
 | SER-02 | Phase 3 | Pending |
 | SER-03 | Phase 3 | Pending |
@@ -88,7 +88,7 @@
 | VR-03 | Phase 1 | Complete |
 | VIS-01 | Phase 2 | Pending |
 | VIS-02 | Phase 2 | Pending |
-| INF-01 | Phase 1 | Pending |
+| INF-01 | Phase 1 | Complete |
 | INF-02 | Phase 1 | Pending |
 
 **Coverage:**
