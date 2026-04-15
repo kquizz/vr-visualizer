@@ -1,0 +1,37 @@
+[gd_scene load_steps=5 format=3 uid="uid://vr_scene_001"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky01"]
+sky_top_color = Color(0.01, 0.01, 0.05, 1)
+sky_horizon_color = Color(0.02, 0.01, 0.04, 1)
+ground_bottom_color = Color(0.0, 0.0, 0.02, 1)
+ground_horizon_color = Color(0.02, 0.01, 0.04, 1)
+
+[sub_resource type="Sky" id="Sky_sky01"]
+sky_material = SubResource("ProceduralSkyMaterial_sky01")
+
+[sub_resource type="Environment" id="Environment_env01"]
+background_mode = 2
+sky = SubResource("Sky_sky01")
+ambient_light_source = 1
+ambient_light_color = Color(0.05, 0.05, 0.15, 1)
+ambient_light_energy = 0.3
+tonemap_mode = 2
+glow_enabled = true
+glow_intensity = 0.4
+
+[ext_resource type="Script" path="res://scripts/fallback_camera.gd" id="fallback_camera_script"]
+
+[node name="VRScene" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_env01")
+
+[node name="XROrigin3D" type="XROrigin3D" parent="."]
+
+[node name="XRCamera3D" type="XRCamera3D" parent="XROrigin3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.7, 0)
+
+[node name="FallbackCamera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.7, 0)
+current = false
+script = ExtResource("fallback_camera_script")
