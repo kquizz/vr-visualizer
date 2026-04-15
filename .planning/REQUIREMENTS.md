@@ -11,17 +11,17 @@
 - [ ] **AUD-02**: Each audio bus has FFT spectrum analysis providing per-frame frequency magnitude data
 - [ ] **AUD-03**: Audio data is normalized into a consistent struct (energy, peak frequency, magnitude bands) consumed by all visualizer modes
 
-### Serato Integration
+### Rekordbox Integration
 
-- [ ] **SER-01**: Serato DJ Pro stem outputs route to Godot via virtual audio device (BlackHole/Loopback on macOS)
-- [ ] **SER-02**: Each Serato stem (drums, bass, vocals, other) maps to its own Godot audio bus in real-time
-- [ ] **SER-03**: Visualization reacts to live Serato playback with acceptable latency (<50ms audio-to-visual)
+- [ ] **SER-01**: Rekordbox DJ Pro stem outputs route to Godot via virtual audio device (BlackHole/Loopback on macOS)
+- [ ] **SER-02**: Each Rekordbox stem (drums, bass, vocals, other) maps to its own Godot audio bus in real-time
+- [ ] **SER-03**: Visualization reacts to live Rekordbox playback with acceptable latency (<50ms audio-to-visual)
 
 ### VR Foundation
 
-- [ ] **VR-01**: Godot project runs as PCVR app with OpenXR, viewable on Quest 3 via Virtual Desktop
-- [ ] **VR-02**: Stable 90fps rendering on desktop GPU
-- [ ] **VR-03**: Comfortable VR experience — no forced locomotion, static viewpoint, photosensitivity-safe defaults
+- [x] **VR-01**: Godot project runs as PCVR app with OpenXR, viewable on Quest 3 via Virtual Desktop
+- [x] **VR-02**: Stable 90fps rendering on desktop GPU
+- [x] **VR-03**: Comfortable VR experience — no forced locomotion, static viewpoint, photosensitivity-safe defaults
 
 ### Visualizer
 
@@ -56,20 +56,20 @@
 ### Extended Audio
 
 - **AUD-04**: Beat detection from drum stem triggers visual events
-- **AUD-05**: Local file playback mode (pre-separated OGG stems from disk) as fallback when Serato isn't running
+- **AUD-05**: Local file playback mode (pre-separated OGG stems from disk) as fallback when Rekordbox isn't running
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
 | Quest 3 standalone mode | PCVR-first; standalone with pre-loaded tracks is a future add |
-| Tidal API integration | Research confirmed no stem API; Serato handles Tidal playback |
+| Tidal API integration | Research confirmed no stem API; Rekordbox handles Tidal playback |
 | Mobile GPU optimization | Desktop GPU, no mobile constraints |
 | Multiplayer/shared experiences | Solo headset experience |
 | Meta Quest Store publishing | Passion project unless it turns out amazing |
-| Spotify/Apple Music | Tidal DJ via Serato is the audio source |
+| Spotify/Apple Music | Rekordbox is the audio source |
 | Microphone input | Curated high-quality audio, not ambient capture |
-| Live Serato DJ set features (cue points, BPM sync) | Serato handles DJing; we just visualize the output |
+| Live Rekordbox DJ set features (cue points, BPM sync) | Rekordbox handles DJing; we just visualize the output |
 | Preset editor | Users don't create visualizers, they experience them |
 | Controller UI in v1 | One mode, no switching needed yet |
 
@@ -83,9 +83,9 @@
 | SER-01 | Phase 3 | Pending |
 | SER-02 | Phase 3 | Pending |
 | SER-03 | Phase 3 | Pending |
-| VR-01 | Phase 1 | Pending |
-| VR-02 | Phase 1 | Pending |
-| VR-03 | Phase 1 | Pending |
+| VR-01 | Phase 1 | Complete |
+| VR-02 | Phase 1 | Complete |
+| VR-03 | Phase 1 | Complete |
 | VIS-01 | Phase 2 | Pending |
 | VIS-02 | Phase 2 | Pending |
 | INF-01 | Phase 1 | Pending |
