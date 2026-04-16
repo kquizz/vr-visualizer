@@ -13,6 +13,7 @@ Three phases take this from empty Godot project to the "holy shit" moment: first
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: VR + Audio Foundation** - PCVR app with 4-bus stem audio, FFT analysis, and normalized audio data pipeline (completed 2026-04-16)
+- [ ] **Phase 1.1: Validate Rekordbox Stem Extraction** (INSERTED) - De-risk spike confirming Rekordbox stems can be individually captured on macOS
 - [ ] **Phase 2: Stem Visualization** - Spectrum bars mode with per-stem visual mapping proving the full audio-to-shader pipeline
 - [ ] **Phase 3: Live Rekordbox Integration** - Real-time Rekordbox stem routing into Godot for live DJ visualization
 
@@ -31,19 +32,25 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 01-01-PLAN.md -- Godot project scaffold with Mobile renderer, OpenXR, VR scene, deep space skybox, flat-screen fallback
-- [ ] 01-02-PLAN.md -- Audio bus layout, AudioData struct, AudioManager autoload with FFT analysis and sync guard
-- [ ] 01-03-PLAN.md -- ShaderBridge global uniforms, test reactive shader, debug overlay, end-to-end verification
+- [x] 01-01-PLAN.md -- Godot project scaffold with Mobile renderer, OpenXR, VR scene, deep space skybox, flat-screen fallback
+- [x] 01-02-PLAN.md -- Audio bus layout, AudioData struct, AudioManager autoload with FFT analysis and sync guard
+- [x] 01-03-PLAN.md -- ShaderBridge global uniforms, test reactive shader, debug overlay, end-to-end verification
 
 ### Phase 1.1: Validate Rekordbox Stem Extraction (INSERTED)
 
-**Goal:** [Urgent work - to be planned]
-**Requirements**: TBD
+**Goal:** Confirm whether Rekordbox DJ Pro's real-time stem separation can provide 4 discrete audio channels (drums, bass, vocals, other) capturable on macOS, de-risking the core Phase 3 architecture
+**Requirements**: SPIKE-01, SPIKE-02, SPIKE-03, SPIKE-04
 **Depends on:** Phase 1
-**Plans:** 3/3 plans complete
+**Success Criteria** (what must be TRUE):
+  1. Rekordbox stem cache investigation is conclusively resolved with evidence
+  2. BlackHole virtual audio routing captures Rekordbox output to WAV files
+  3. 4 stem WAV files captured via solo-and-capture are audibly isolated
+  4. FINDINGS.md contains definitive Phase 3 architecture recommendation
+**Plans**: 2 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 01.1 to break down)
+- [ ] 01.1-01-PLAN.md -- Cache investigation + BlackHole setup and routing verification
+- [ ] 01.1-02-PLAN.md -- Solo-and-capture all 4 stems + quality assessment + Phase 3 recommendation
 
 ### Phase 2: Stem Visualization
 **Goal**: A spectrum bars visualizer where each stem drives distinct visual elements, proving the creative vision of stem-separated VR visualization
@@ -75,10 +82,11 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3
+Phases execute in numeric order: 1 -> 1.1 -> 2 -> 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. VR + Audio Foundation | 3/3 | Complete   | 2026-04-16 |
+| 1.1. Validate Rekordbox Stem Extraction | 0/2 | Planning complete | - |
 | 2. Stem Visualization | 0/? | Not started | - |
 | 3. Live Rekordbox Integration | 0/? | Not started | - |
