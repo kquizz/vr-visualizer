@@ -1,92 +1,86 @@
 # Roadmap: VR Music Visualizer
 
-## Overview
+## Milestones
 
-Three phases take this from empty Godot project to the "holy shit" moment: first, prove the PCVR + audio pipeline works with test stems; second, build the spectrum bars visualizer with per-stem visual mapping; third, wire up live Rekordbox stems so someone wearing the headset is inside your live DJ mix.
+- [x] **v1.0 VR + Audio Foundation** - Phase 1 (completed 2026-04-16)
+- [ ] **v2.0 FFT-First Visualizer** - Phases 2-4 (in progress)
 
 ## Phases
 
 **Phase Numbering:**
 - Integer phases (1, 2, 3): Planned milestone work
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
+- Phase 1 and 1.1 belonged to v1.0 milestone (Phase 1 completed, Phase 1.1 abandoned -- Rekordbox stems confirmed dead end)
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [x] **Phase 1: VR + Audio Foundation** - PCVR app with 4-bus stem audio, FFT analysis, and normalized audio data pipeline (completed 2026-04-16)
-- [ ] **Phase 1.1: Validate Rekordbox Stem Extraction** (INSERTED) - De-risk spike confirming Rekordbox stems can be individually captured on macOS
-- [ ] **Phase 2: Stem Visualization** - Spectrum bars mode with per-stem visual mapping proving the full audio-to-shader pipeline
-- [ ] **Phase 3: Live Rekordbox Integration** - Real-time Rekordbox stem routing into Godot for live DJ visualization
+<details>
+<summary>v1.0 VR + Audio Foundation (Phase 1) - COMPLETED 2026-04-16</summary>
+
+- [x] **Phase 1: VR + Audio Foundation** - PCVR app with 4-bus stem audio, FFT analysis, and normalized audio data pipeline
+- ~~Phase 1.1: Validate Rekordbox Stem Extraction~~ (ABANDONED -- Rekordbox stems are real-time only, no discrete audio output)
+
+</details>
+
+### v2.0 FFT-First Visualizer
+
+- [ ] **Phase 2: Audio Capture Refactor** - BlackHole system audio capture with single-source FFT pipeline replacing stem buses
+- [ ] **Phase 3: Spectrum Bars + Mode System** - Spatial frequency bars in VR with ModeManager scene lifecycle
+- [ ] **Phase 4: Milkdrop Warp Mode** - Feedback shader visualizer with audio-driven warp, completing the two-mode experience
 
 ## Phase Details
 
-### Phase 1: VR + Audio Foundation
-**Goal**: A VR scene running on Quest 3 via Virtual Desktop that plays 4 stem audio streams with per-frame FFT data available to shaders
-**Depends on**: Nothing (first phase)
-**Requirements**: AUD-01, AUD-02, AUD-03, VR-01, VR-02, VR-03, INF-01, INF-02
+### Phase 2: Audio Capture Refactor
+**Goal**: Any desktop audio playing on the computer is captured into Godot and analyzed into frequency bands available to shaders
+**Depends on**: Phase 1 (VR foundation, existing AudioManager/ShaderBridge)
+**Requirements**: AUD-04, AUD-05, AUD-06, AUD-07
 **Success Criteria** (what must be TRUE):
-  1. Godot project launches as PCVR app and displays a VR scene on Quest 3 via Virtual Desktop
-  2. Four audio streams (test OGG files for drums, bass, vocals, other) play simultaneously on separate Godot audio buses
-  3. FFT spectrum data updates every frame for each audio bus, visible via debug overlay in VR
-  4. AudioManager autoload exposes a normalized AudioData struct (energy, peak frequency, magnitude bands) consumed by a test shader that visibly reacts to audio
-  5. Scene renders at stable 90fps on desktop GPU with no VR discomfort (no forced movement, static viewpoint)
-**Plans**: 3 plans
-
-Plans:
-- [x] 01-01-PLAN.md -- Godot project scaffold with Mobile renderer, OpenXR, VR scene, deep space skybox, flat-screen fallback
-- [x] 01-02-PLAN.md -- Audio bus layout, AudioData struct, AudioManager autoload with FFT analysis and sync guard
-- [x] 01-03-PLAN.md -- ShaderBridge global uniforms, test reactive shader, debug overlay, end-to-end verification
-
-### Phase 1.1: Validate Rekordbox Stem Extraction (INSERTED)
-
-**Goal:** Confirm whether Rekordbox DJ Pro's real-time stem separation can provide 4 discrete audio channels (drums, bass, vocals, other) capturable on macOS, de-risking the core Phase 3 architecture
-**Requirements**: SPIKE-01, SPIKE-02, SPIKE-03, SPIKE-04
-**Depends on:** Phase 1
-**Success Criteria** (what must be TRUE):
-  1. Rekordbox stem cache investigation is conclusively resolved with evidence
-  2. BlackHole virtual audio routing captures Rekordbox output to WAV files
-  3. 4 stem WAV files captured via solo-and-capture are audibly isolated
-  4. FINDINGS.md contains definitive Phase 3 architecture recommendation
-**Plans**: 2 plans
-
-Plans:
-- [ ] 01.1-01-PLAN.md -- Cache investigation + BlackHole setup and routing verification
-- [ ] 01.1-02-PLAN.md -- Solo-and-capture all 4 stems + quality assessment + Phase 3 recommendation
-
-### Phase 2: Stem Visualization
-**Goal**: A spectrum bars visualizer where each stem drives distinct visual elements, proving the creative vision of stem-separated VR visualization
-**Depends on**: Phase 1
-**Requirements**: VIS-01, VIS-02
-**Success Criteria** (what must be TRUE):
-  1. Spectrum bars render spatially in the VR void with one distinct color per stem (4 stem groups visible)
-  2. Bar heights react in real-time to FFT magnitude data from their corresponding stem
-  3. Stem-to-visual mapping is observable: drums produce impact/pulse effects, bass drives spatial warping, vocals generate flowing shapes, melody drives pattern generation
+  1. Playing music in Spotify (or any audio app) produces non-zero FFT data in Godot, visible in the debug overlay
+  2. AudioManager reads from a single BlackHole capture bus (not 4 stem buses) and exposes frequency-band data (sub-bass, bass, mids, highs)
+  3. ShaderBridge pushes frequency-band uniforms that a test shader visibly reacts to from live system audio
+  4. Switching between audio sources (Spotify, YouTube, Tidal) requires zero changes in Godot -- it just works
 **Plans**: TBD
 
 Plans:
 - [ ] 02-01: TBD
+- [ ] 02-02: TBD
 
-### Phase 3: Live Rekordbox Integration
-**Goal**: Rekordbox's live stem separation feeds directly into the visualizer -- the party trick works
-**Depends on**: Phase 2
-**Requirements**: SER-01, SER-02, SER-03
+### Phase 3: Spectrum Bars + Mode System
+**Goal**: A spatial spectrum bars visualizer runs in VR, managed by a mode system that can load and switch between visualizer scenes
+**Depends on**: Phase 2 (clean FFT data from live audio)
+**Requirements**: VIS-01, VIS-02, INF-03
 **Success Criteria** (what must be TRUE):
-  1. Rekordbox stem outputs route to Godot via virtual audio device (BlackHole or Loopback on macOS)
-  2. Each Rekordbox stem (drums, bass, vocals, other) maps to its corresponding Godot audio bus in real-time
-  3. Visualization reacts to live Rekordbox playback with latency under 50ms (audio change to visual response)
-  4. The end-to-end experience works: DJ plays on Rekordbox, person in headset sees stem-reactive visualization of the live mix
+  1. 3D spectrum bars are visible in VR space, arranged spatially around the viewer, with distinct colors per frequency band
+  2. Bar heights move in real-time tracking the music -- bass hits make bass bars jump, high-hats make high-frequency bars spike
+  3. ModeManager can load the spectrum bars scene and will be able to switch to a second mode once it exists
 **Plans**: TBD
 
 Plans:
 - [ ] 03-01: TBD
+- [ ] 03-02: TBD
+
+### Phase 4: Milkdrop Warp Mode
+**Goal**: A Milkdrop-style warp feedback visualizer surrounds the viewer in VR, completing the two-mode experience with stutter-free switching
+**Depends on**: Phase 3 (ModeManager, validated ShaderBridge pipeline)
+**Requirements**: VIS-03, VIS-04, INF-04
+**Success Criteria** (what must be TRUE):
+  1. Warp mode renders flowing psychedelic visuals that respond to music -- bass drives zoom/warp, mids drive rotation, highs drive color intensity
+  2. The feedback loop runs stable for 5+ minutes without visual artifacts (no grid patterns, no precision drift)
+  3. Switching between spectrum bars and warp mode via controller works without frame drops or shader compilation stutter
+  4. Both modes render correctly in VR (Quest 3 via Virtual Desktop) and in flat-screen fallback
+**Plans**: TBD
+
+Plans:
+- [ ] 04-01: TBD
+- [ ] 04-02: TBD
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 1.1 -> 2 -> 3
+Phases execute in numeric order: 2 -> 3 -> 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. VR + Audio Foundation | 3/3 | Complete   | 2026-04-16 |
-| 1.1. Validate Rekordbox Stem Extraction | 0/2 | Planning complete | - |
-| 2. Stem Visualization | 0/? | Not started | - |
-| 3. Live Rekordbox Integration | 0/? | Not started | - |
+| 2. Audio Capture Refactor | 0/? | Not started | - |
+| 3. Spectrum Bars + Mode System | 0/? | Not started | - |
+| 4. Milkdrop Warp Mode | 0/? | Not started | - |

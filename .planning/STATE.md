@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: FFT-First Visualizer
-status: defining_requirements
+status: ready_to_plan
 stopped_at: null
 last_updated: "2026-04-16"
-last_activity: 2026-04-16 -- Milestone v2.0 started
+last_activity: 2026-04-16 -- v2.0 roadmap created
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,28 +20,30 @@ progress:
 
 See: .planning/PROJECT.md (updated 2026-04-16)
 
-**Core value:** Whatever music is playing on your computer comes alive around you — frequency bands drive distinct visual layers
-**Current focus:** Defining requirements for v2.0
+**Core value:** Whatever music is playing on your computer comes alive around you -- frequency bands drive distinct visual layers
+**Current focus:** Phase 2: Audio Capture Refactor
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-04-16 — Milestone v2.0 started
+Phase: 2 of 4 (Audio Capture Refactor)
+Plan: 0 of ? in current phase
+Status: Ready to plan
+Last activity: 2026-04-16 -- v2.0 roadmap created (FFT-first pivot)
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 0
-- Average duration: -
-- Total execution time: 0 hours
+- Total plans completed: 3 (v1.0)
+- Average duration: --
+- Total execution time: --
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 1. VR + Audio Foundation | 3/3 | -- | -- |
 
 *Updated after each plan completion*
 
@@ -52,17 +54,17 @@ Last activity: 2026-04-16 — Milestone v2.0 started
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
-- [v2.0]: Pivoted from Rekordbox stems to FFT frequency bands — stems confirmed dead end
-- [v2.0]: PCVR retained — desktop GPU + easy audio capture via BlackHole
-- [v2.0]: 1-2 visualizer modes for this milestone — prove pipeline first
-- [Phase 01]: Mobile renderer for XR per official Godot docs (not Forward+)
-- [Phase 01]: WAV stems instead of Opus OGG for Godot 4.6 native import
+- [v2.0]: FFT frequency bands over Rekordbox stems (stems confirmed dead end)
+- [v2.0]: BlackHole virtual audio device for system audio capture
+- [v2.0]: 1-2 visualizer modes for v2.0 (prove pipeline before stacking modes)
+- [v2.0]: SubViewport ping-pong for Milkdrop warp (SCREEN_TEXTURE broken in VR stereo)
+- [Phase 01]: Mobile renderer for XR per official Godot docs
 - [Phase 01]: macOS flat-screen mode skips OpenXR init entirely for desktop testing
 
 ### Roadmap Evolution
 
-- v1.0 Phases 1.1, 2, 3 abandoned — Rekordbox-centric approach replaced by FFT-first
-- v2.0 milestone started — new phases TBD
+- v1.0 Phase 1 completed. Phases 1.1, 2, 3 abandoned (Rekordbox dead end)
+- v2.0 milestone: 3 new phases (2-4) for FFT-first visualizer
 
 ### Pending Todos
 
@@ -70,11 +72,11 @@ None yet.
 
 ### Blockers/Concerns
 
-- BlackHole audio routing into Godot unvalidated — needs Phase 2 investigation
-- Virtual Desktop latency impact on audio-visual sync still unknown
+- [Phase 2]: BlackHole + Godot 4.6 macOS audio input bug (PR #111691) -- must validate on this machine first
+- [Phase 4]: SubViewport ping-pong in VR stereo is under-documented -- needs proof-of-concept
 
 ## Session Continuity
 
 Last session: 2026-04-16
-Stopped at: Milestone v2.0 initialization
-Resume file: —
+Stopped at: v2.0 roadmap created, ready to plan Phase 2
+Resume file: None

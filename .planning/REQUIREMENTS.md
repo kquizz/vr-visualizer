@@ -90,22 +90,22 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUD-04 | TBD | Pending |
-| AUD-05 | TBD | Pending |
-| AUD-06 | TBD | Pending |
-| AUD-07 | TBD | Pending |
-| VIS-01 | TBD | Pending |
-| VIS-02 | TBD | Pending |
-| VIS-03 | TBD | Pending |
-| VIS-04 | TBD | Pending |
-| INF-03 | TBD | Pending |
-| INF-04 | TBD | Pending |
+| AUD-04 | Phase 2 | Pending |
+| AUD-05 | Phase 2 | Pending |
+| AUD-06 | Phase 2 | Pending |
+| AUD-07 | Phase 2 | Pending |
+| VIS-01 | Phase 3 | Pending |
+| VIS-02 | Phase 3 | Pending |
+| INF-03 | Phase 3 | Pending |
+| VIS-03 | Phase 4 | Pending |
+| VIS-04 | Phase 4 | Pending |
+| INF-04 | Phase 4 | Pending |
 
 **Coverage:**
 - v2.0 requirements: 10 total
-- Mapped to phases: 0
-- Unmapped: 10 ⚠️
+- Mapped to phases: 10
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-16*
-*Last updated: 2026-04-16 after v2.0 milestone definition*
+*Last updated: 2026-04-16 after v2.0 roadmap creation*
