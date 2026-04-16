@@ -1,254 +1,501 @@
-# Architecture Patterns
+# Architecture Research
 
-**Domain:** VR Music Visualizer (Quest 3 Standalone)
-**Researched:** 2026-04-13
+**Domain:** PCVR Music Visualizer — BlackHole system audio, FFT frequency bands, Milkdrop-style shaders
+**Researched:** 2026-04-16
+**Confidence:** HIGH (existing codebase verified, Godot APIs confirmed via docs, Milkdrop pipeline well-documented)
 
-## Recommended Architecture
-
-### High-Level System
+## System Overview
 
 ```
-[Desktop Pipeline]                    [Quest 3 App]
-
-Tidal/Local Audio                     Main Scene (XROrigin3D)
-      |                                     |
-   Demucs                             Audio Manager
-(stem separation)                    /    |    |    \
-      |                           Drums  Bass Vocal Other
-  4x OGG files                   (bus)  (bus) (bus) (bus)
-      |                             |     |     |     |
-  Transfer to Quest              FFT    FFT   FFT   FFT
-  (USB/WiFi/storage)               \     |     |     /
-                                   Audio Data Struct
-                                   (4x frequency bands)
-                                         |
-                                   Mode Manager
-                                   /     |      \
-                                Mode1  Mode2  Mode3...
-                              (scene) (scene) (scene)
-                                 |       |       |
-                              Shaders  Shaders  Shaders
-                              (uniforms from audio data)
+┌──────────────────────────────────────────────────────────────────┐
+│  macOS System Audio                                              │
+│  (Spotify, Tidal, Rekordbox, YouTube, anything)                  │
+│       │                                                          │
+│       ▼                                                          │
+│  BlackHole 2ch ─────► macOS Multi-Output Device                  │
+│  (virtual audio)       (speakers + BlackHole combined)           │
+└───────┬──────────────────────────────────────────────────────────┘
+        │ AudioStreamMicrophone sees BlackHole as input device
+        ▼
+┌──────────────────────────────────────────────────────────────────┐
+│  Godot Audio Layer                                               │
+│                                                                  │
+│  ┌─────────────────┐    ┌──────────────┐                         │
+│  │ AudioStreamPlayer│───►│ "Capture" Bus│                         │
+│  │ (Microphone)     │    │   ┌────────────────────────────┐      │
+│  └─────────────────┘    │   │ AudioEffectSpectrumAnalyzer │      │
+│                          │   └────────────────────────────┘      │
+│                          │   send ──► Master (muted)             │
+│                          └──────────────┘                         │
+│                                  │                                │
+│                          ┌───────▼───────┐                       │
+│                          │ AudioManager  │ (MODIFIED autoload)   │
+│                          │ FFT per frame │                       │
+│                          │ 7 bands       │                       │
+│                          └───────┬───────┘                       │
+│                                  │ AudioData                     │
+│                          ┌───────▼───────┐                       │
+│                          │ ShaderBridge  │ (MODIFIED autoload)   │
+│                          │ global uniforms│                      │
+│                          └───────┬───────┘                       │
+└──────────────────────────┼───────────────────────────────────────┘
+                           │
+┌──────────────────────────▼───────────────────────────────────────┐
+│  Visualization Layer                                             │
+│                                                                  │
+│  ┌─────────────┐    ┌───────────────────────────────────┐        │
+│  │ ModeManager │───►│ Active Mode (PackedScene)          │        │
+│  │ (NEW auto)  │    │                                    │        │
+│  └──────┬──────┘    │  ┌──────────┐  ┌───────────────┐  │        │
+│         │           │  │ Geometry │  │ Shader(s)     │  │        │
+│    VR controller    │  │ (mesh/   │  │ (reads global │  │        │
+│    input            │  │  multi-  │  │  uniforms)    │  │        │
+│                     │  │  mesh)   │  │               │  │        │
+│                     │  └──────────┘  └───────────────┘  │        │
+│                     └───────────────────────────────────┘        │
+│                                                                  │
+│  ┌────────────────┐                                              │
+│  │ XROrigin3D     │  Main scene (unchanged from Phase 1)        │
+│  │  + XRCamera3D  │                                              │
+│  │  + Controllers │                                              │
+│  └────────────────┘                                              │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
-### Component Boundaries
+## What Changes vs. Phase 1
+
+### Components Modified
+
+| Component | Current State | What Changes | Why |
+|-----------|--------------|--------------|-----|
+| **AudioManager** | 4 stem buses, 4 AudioStreamPlayers, stem-centric | Single "Capture" bus with mic input, single FFT source, no stem sync logic | BlackHole feeds one stereo stream, not 4 stems |
+| **ShaderBridge** | Pushes 4x stem uniforms (drums_, bass_, vocals_, other_) | Pushes 1x unified set of band uniforms (audio_) | Single audio source, not 4 stems |
+| **AudioData** | Already has 7 bands, energy, peak_frequency | Add `beat` bool for simple beat detection, keep bands as-is | Beat detection useful for mode transitions and pulse effects |
+| **project.godot** | 16 shader globals (4 stems x 4 each) | ~6 shader globals (1 source x bands + energy + beat) | Simpler, matches single-source FFT |
+| **default_bus_layout.tres** | 4 stem buses (Drums/Bass/Vocals/Other) | 1 "Capture" bus with SpectrumAnalyzer | Single source replaces 4 stems |
+
+### Components Added (NEW)
+
+| Component | Purpose | Type |
+|-----------|---------|------|
+| **ModeManager** | Registers modes, switches between them, manages transitions | Autoload singleton |
+| **VisualizerMode** | Base class all modes extend, defines lifecycle interface | GDScript class |
+| **SpectrumBarsMode** | First mode: spatial bars in VR, colored by frequency band | PackedScene |
+| **WarpTunnelMode** | Second mode: Milkdrop-style warp with SubViewport feedback | PackedScene |
+
+### Components Unchanged
+
+| Component | Why No Changes |
+|-----------|---------------|
+| **main.gd** | XR init logic stays the same, just hosts ModeManager's active mode |
+| **debug_overlay.gd** | Update to read new uniform names, otherwise same pattern |
+| **fallback_camera.gd** | Flat-screen preview still needed for macOS dev |
+
+## Component Responsibilities
 
 | Component | Responsibility | Communicates With |
-|-----------|---------------|-------------------|
-| **AudioManager** (autoload) | Load stem files, manage 4 AudioStreamPlayers, 4 audio buses, 4 SpectrumAnalyzers. Expose per-frame audio data as a struct. | ModeManager (provides audio data), XR UI (volume control) |
-| **ModeManager** (autoload) | Scene switching, transition effects, mode registry. Loads/unloads visualizer scenes. | AudioManager (reads audio data), InputManager (mode switch triggers), Individual modes (lifecycle) |
-| **InputManager** (autoload) | Controller button mapping, hand gesture detection. Translates raw XR input into semantic actions. | ModeManager (switch mode), AudioManager (volume), XR UI (menu toggle) |
-| **Visualizer Mode** (scene) | Self-contained visualizer. Receives audio data struct, drives its own shaders/geometry. Each mode is a PackedScene. | AudioManager (reads audio data via autoload), owns its own ShaderMaterials |
-| **Stem Prep Pipeline** (desktop Python) | Download audio, run Demucs, export OGG stems. Completely separate from Godot project. | File system only (outputs OGG files) |
+|-----------|----------------|-------------------|
+| **AudioManager** (autoload) | Configure BlackHole input, run FFT on capture bus, update AudioData each frame, provide beat detection | ShaderBridge (data consumer), ModeManager (beat events) |
+| **ShaderBridge** (autoload) | Push AudioData into global shader uniforms each _process | AudioManager (reads AudioData), All shaders (via global uniforms) |
+| **ModeManager** (autoload) | Mode registry, scene switching, transition effects, VR input handling for mode changes | AudioManager (beat sync for transitions), Active mode scene (lifecycle), XR controllers (input) |
+| **VisualizerMode** (base class) | Define `activate()` / `deactivate()` / `_process()` interface | AudioManager (reads data via global uniforms or direct access) |
+| **SpectrumBarsMode** (scene) | MultiMeshInstance3D bars, one per frequency band, height/color driven by band energy | Global shader uniforms (audio_bands_low, audio_bands_high) |
+| **WarpTunnelMode** (scene) | Dual SubViewport feedback loop, warp shader + composite shader, Milkdrop-style | Global shader uniforms, SubViewport textures (feedback) |
 
-### Data Flow
-
-**Per-Frame Audio Pipeline (runs every `_process`):**
-
-```
-1. AudioEffectSpectrumAnalyzerInstance.get_magnitude_for_frequency_range()
-   Called 4x (one per bus) with ~8 frequency bands each = 32 float values
-
-2. AudioData resource updated:
-   {
-     drums:  { sub_bass: 0.8, bass: 0.6, low_mid: 0.3, mid: 0.1, ... , energy: 0.7, beat: true },
-     bass:   { sub_bass: 0.9, bass: 0.7, low_mid: 0.2, mid: 0.05, ... , energy: 0.6, beat: false },
-     vocals: { sub_bass: 0.0, bass: 0.1, low_mid: 0.4, mid: 0.8, ... , energy: 0.5, beat: false },
-     other:  { sub_bass: 0.1, bass: 0.2, low_mid: 0.5, mid: 0.6, ... , energy: 0.4, beat: false }
-   }
-
-3. Active visualizer mode reads AudioData, sets shader uniforms:
-   material.set_shader_parameter("drums_energy", audio_data.drums.energy)
-   material.set_shader_parameter("bass_energy", audio_data.bass.energy)
-   material.set_shader_parameter("vocal_energy", audio_data.vocals.energy)
-   material.set_shader_parameter("beat_drums", 1.0 if audio_data.drums.beat else 0.0)
-
-4. GPU renders frame with audio-reactive shader parameters
-```
-
-**Stem File Loading:**
-
-```
-1. App starts -> scan user://stems/ directory for song folders
-2. Each song folder contains: drums.ogg, bass.ogg, vocals.ogg, other.ogg
-3. AudioManager loads all 4 into AudioStreamPlayers
-4. Playback starts synchronized (all 4 play() called same frame)
-5. Periodic sync check: if drift > 10ms, resync to drums track position
-```
-
-## Patterns to Follow
-
-### Pattern 1: Autoload Singletons for Core Systems
-
-**What:** AudioManager, ModeManager, and InputManager are Godot autoloads (singletons).
-**When:** Always. These persist across scene changes.
-**Why:** Visualizer modes are swapped as scenes. Audio must keep playing across transitions. Autoloads survive scene changes.
-
-```gdscript
-# project.godot
-[autoload]
-AudioManager = "*res://core/audio_manager.gd"
-ModeManager = "*res://core/mode_manager.gd"
-InputManager = "*res://core/input_manager.gd"
-```
-
-### Pattern 2: Each Mode = One PackedScene
-
-**What:** Every visualizer mode is a self-contained scene with its own nodes, shaders, and script.
-**When:** For every new visualizer mode.
-**Why:** Clean separation. Modes can be developed/tested independently. Mode switching = scene swap under a parent node.
-
-```gdscript
-# Structure:
-# res://modes/spectrum_bars/spectrum_bars.tscn  (scene)
-# res://modes/spectrum_bars/spectrum_bars.gd    (script)
-# res://modes/spectrum_bars/spectrum_bars.gdshader (shader)
-#
-# res://modes/milkdrop_warp/milkdrop_warp.tscn
-# res://modes/milkdrop_warp/milkdrop_warp.gd
-# res://modes/milkdrop_warp/warp.gdshader
-# res://modes/milkdrop_warp/composite.gdshader
-```
-
-### Pattern 3: Shader Uniform Bridge
-
-**What:** GDScript reads FFT data and passes to shaders as uniforms every frame.
-**When:** Every visualizer mode that uses custom shaders (all of them).
-**Why:** Keeps audio analysis in GDScript (simple, debuggable) and visual rendering in shaders (fast, GPU-parallel).
-
-```gdscript
-# In a visualizer mode's _process():
-func _process(_delta: float) -> void:
-    var audio := AudioManager.get_audio_data()
-    mesh_material.set_shader_parameter("drums_energy", audio.drums.energy)
-    mesh_material.set_shader_parameter("bass_warp", audio.bass.sub_bass * 2.0)
-    mesh_material.set_shader_parameter("vocal_brightness", audio.vocals.mid)
-    mesh_material.set_shader_parameter("time", Time.get_ticks_msec() / 1000.0)
-```
-
-### Pattern 4: SubViewport Feedback Loop (Milkdrop-style)
-
-**What:** Render current frame to a SubViewport, use its texture as input for next frame's shader.
-**When:** Warp tunnel effects, motion blur, trailing effects, Milkdrop-style motion vectors.
-**Why:** This is THE technique behind Milkdrop's iconic look. Previous frame warped by audio-reactive displacement + new frame composited on top.
-
-```
-SubViewportA (reads from SubViewportB's texture)
-     |
-  Renders warp shader (displaces previous frame based on audio)
-     |
-SubViewportB (reads from SubViewportA's texture)
-     |
-  Next frame...
-```
-
-### Pattern 5: Frequency Band Extraction
-
-**What:** Extract meaningful frequency bands from raw FFT, not raw bin data.
-**When:** In AudioManager, every frame.
-**Why:** Raw FFT bins are meaningless to visualizer modes. Convert to musical ranges: sub-bass (20-60Hz), bass (60-250Hz), low-mid (250-500Hz), mid (500-2kHz), high-mid (2-4kHz), presence (4-6kHz), brilliance (6-20kHz). Normalize to 0.0-1.0.
-
-```gdscript
-const BANDS := {
-    "sub_bass": Vector2(20.0, 60.0),
-    "bass": Vector2(60.0, 250.0),
-    "low_mid": Vector2(250.0, 500.0),
-    "mid": Vector2(500.0, 2000.0),
-    "high_mid": Vector2(2000.0, 4000.0),
-    "presence": Vector2(4000.0, 6000.0),
-    "brilliance": Vector2(6000.0, 20000.0),
-}
-
-func _get_band_magnitude(analyzer: AudioEffectSpectrumAnalyzerInstance, band: Vector2) -> float:
-    var mag := analyzer.get_magnitude_for_frequency_range(band.x, band.y)
-    return clampf((mag.x + mag.y) / 2.0, 0.0, 1.0)
-```
-
-## Anti-Patterns to Avoid
-
-### Anti-Pattern 1: Processing Audio in Shaders
-
-**What:** Trying to do FFT or audio analysis in fragment/compute shaders.
-**Why bad:** Quest 3 has limited compute shader support. Audio data needs to be extracted as scalar values anyway. Shaders should receive pre-processed floats, not raw audio buffers.
-**Instead:** Do all audio analysis in GDScript via AudioEffectSpectrumAnalyzer. Pass results as uniform floats.
-
-### Anti-Pattern 2: One Giant Scene
-
-**What:** Putting all visualizer modes in a single scene with visibility toggles.
-**Why bad:** Memory waste (all modes loaded), complexity explosion, can't develop modes independently.
-**Instead:** Each mode is a PackedScene. ModeManager instantiates/frees them.
-
-### Anti-Pattern 3: Physics-Based Particles
-
-**What:** Using Godot's GPUParticles3D or CPUParticles3D for audio-reactive effects.
-**Why bad:** Particle systems are designed for fire/smoke/sparks -- they fight you when you want deterministic audio reactivity. On mobile GPU, particle overdraw destroys framerate.
-**Instead:** MultiMeshInstance3D with vertex shader displacement. You control every instance's position/scale/color directly. More performant, more controllable.
-
-### Anti-Pattern 4: Unthrottled FFT Queries
-
-**What:** Querying get_magnitude_for_frequency_range() for dozens of narrow bands every frame.
-**Why bad:** Each query has overhead. 4 stems x 20 bands = 80 queries per frame adds up.
-**Instead:** 4 stems x 7-8 bands = ~32 queries per frame. Group into musically meaningful ranges. Cache and smooth values.
-
-### Anti-Pattern 5: Synchronizing Stems via Signals
-
-**What:** Using Godot signals to keep 4 AudioStreamPlayers in sync.
-**Why bad:** Signal delivery has frame-boundary latency. Stems will drift.
-**Instead:** Start all 4 players on the same frame. Periodically check `get_playback_position()` on all 4 and resync if drift exceeds threshold (~10ms).
-
-## Directory Structure
+## Recommended Project Structure
 
 ```
 vr-visualizer/
-  project.godot
-  core/
-    audio_manager.gd          # Autoload: audio playback, FFT, beat detection
-    audio_data.gd             # Resource: per-frame audio analysis results
-    mode_manager.gd           # Autoload: mode switching, transitions
-    input_manager.gd          # Autoload: controller/gesture input mapping
+  project.godot                    # Autoloads, shader globals, XR config
+  default_bus_layout.tres          # MODIFIED: single Capture bus
+  scenes/
+    main.tscn                      # XROrigin3D, mode container, debug overlay
+  scripts/
+    audio_data.gd                  # MODIFIED: add beat, keep 7 bands
+    main.gd                        # UNCHANGED: XR init
+    debug_overlay.gd               # MODIFIED: read new uniform names
+    fallback_camera.gd             # UNCHANGED
+    autoloads/
+      audio_manager.gd             # MODIFIED: mic input, single FFT source
+      shader_bridge.gd             # MODIFIED: unified uniform names
+      mode_manager.gd              # NEW: mode switching
   modes/
-    base_mode.gd              # Base class all modes extend
+    visualizer_mode.gd             # NEW: base class
     spectrum_bars/
-      spectrum_bars.tscn
-      spectrum_bars.gd
-      spectrum_bars.gdshader
-    milkdrop_warp/
-      milkdrop_warp.tscn
-      milkdrop_warp.gd
-      warp.gdshader
-      composite.gdshader
-    geiss_plasma/
-      ...
-  ui/
-    mode_menu.tscn             # In-VR mode selection panel
-    mode_menu.gd
-  stems/                       # Git-ignored, user adds their own
-    song_name/
-      drums.ogg
-      bass.ogg
-      vocals.ogg
-      other.ogg
-  tools/
-    prepare_stems.py           # Desktop CLI: Demucs wrapper
-    requirements.txt           # demucs, tidalapi (optional)
-  export_presets.cfg           # Android/Quest export config
+      spectrum_bars.tscn           # NEW: bars scene
+      spectrum_bars.gd             # NEW: bars logic
+      spectrum_bars.gdshader       # NEW: bars shader
+    warp_tunnel/
+      warp_tunnel.tscn             # NEW: warp scene with SubViewports
+      warp_tunnel.gd               # NEW: warp logic
+      warp.gdshader                # NEW: UV distortion shader
+      composite.gdshader           # NEW: final output shader
+  shaders/
+    test_reactive.gdshader         # KEEP for testing, update uniform names
+  audio/                           # REMOVE stems dir, no longer needed
 ```
 
-## Scalability Considerations
+### Structure Rationale
 
-| Concern | At 1 mode | At 5 modes | At 20+ modes |
-|---------|-----------|------------|--------------|
-| Memory | Trivial (~50MB) | Fine. Only active mode loaded. | Fine if modes free properly. Watch for shader compilation stalls on first load. |
-| Shader compilation | Instant | May stutter on first switch to a mode. | Use Godot 4.5+'s shader baking to pre-compile all mode shaders at startup. |
-| Audio overhead | 4 FFT queries, negligible | Same (audio system is mode-independent) | Same |
-| Mode transition | Instant swap | Should add crossfade | Consider lazy-loading or background loading of next mode's scene. |
-| Song library | 1 song, ~20MB stems | 10 songs, ~200MB | Store on device storage, not in APK. Load from user:// or a configurable path. |
+- **modes/**: Each mode is self-contained (scene + script + shaders) so modes can be developed and tested independently. ModeManager loads by path.
+- **scripts/autoloads/**: Core systems that persist across mode switches. AudioManager, ShaderBridge, ModeManager.
+- **Flat directory under modes/**: No nested categories yet. With only 2 modes, categorization is premature.
+
+## Architectural Patterns
+
+### Pattern 1: BlackHole as AudioStreamMicrophone
+
+**What:** Godot's AudioStreamMicrophone captures whatever macOS routes through BlackHole. From Godot's perspective, BlackHole is just a microphone.
+**When to use:** Always. This is the system audio capture mechanism.
+**Trade-offs:** Requires one-time macOS audio setup (Multi-Output Device in Audio MIDI Setup). User must select BlackHole as Godot's input device. Not automatic, but only done once.
+
+**Setup flow:**
+1. Install BlackHole 2ch
+2. Create Multi-Output Device in Audio MIDI Setup (speakers + BlackHole)
+3. Set Multi-Output as system output
+4. In Godot project settings: `audio/driver/enable_input = true`
+5. AudioManager calls `AudioServer.input_device = "BlackHole 2ch"` at startup
+
+**Implementation:**
+```gdscript
+# AudioManager._initialize() - NEW version
+func _initialize() -> void:
+    # Set BlackHole as input device
+    var devices = AudioServer.get_input_device_list()
+    for device in devices:
+        if "BlackHole" in device:
+            AudioServer.input_device = device
+            break
+
+    # Create mic player on Capture bus
+    var player := AudioStreamPlayer.new()
+    player.stream = AudioStreamMicrophone.new()
+    player.bus = "Capture"
+    add_child(player)
+    player.play()
+
+    # Get spectrum analyzer from Capture bus
+    var bus_idx := AudioServer.get_bus_index("Capture")
+    _analyzer = AudioServer.get_bus_effect_instance(bus_idx, 0)
+    _audio_data = AudioData.new()
+```
+
+**Critical note:** The Capture bus must send to Master but Master should NOT output to speakers (to avoid feedback). Instead, the Multi-Output Device at the OS level handles speakers. In Godot, mute the Master bus or set its volume to -INF dB.
+
+### Pattern 2: Unified FFT Band Mapping
+
+**What:** Single AudioData struct with 7 frequency bands from one stereo source, replacing 4 separate stem AudioData instances.
+**When to use:** Always. This is simpler and more powerful than the stem approach.
+**Trade-offs:** Lose per-instrument isolation (drums vs bass), but gain: works with any audio source, no prep step, lower latency.
+
+**AudioData stays nearly identical:**
+```gdscript
+class_name AudioData
+extends RefCounted
+
+var energy: float = 0.0
+var peak_frequency: float = 0.0
+var bands: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+var beat: bool = false  # NEW: simple beat detection
+```
+
+**Shader globals simplify from 16 to 6:**
+```
+audio_energy      (float)  - overall energy 0-1
+audio_peak_freq   (float)  - dominant frequency Hz
+audio_bands_low   (vec4)   - sub_bass, bass, low_mid, mid
+audio_bands_high  (vec4)   - upper_mid, presence, brilliance, beat(0/1)
+audio_beat        (float)  - 1.0 on beat, 0.0 otherwise
+audio_time        (float)  - elapsed time for animation
+```
+
+**Rationale for packing beat into bands_high.w:** Saves a uniform slot. Shaders that need beat can read `audio_bands_high.w`. ShaderBridge also sets `audio_beat` separately for readability in simpler shaders.
+
+### Pattern 3: ModeManager with Scene Swapping
+
+**What:** Autoload that manages a container node in the main scene. Modes are PackedScenes loaded and instantiated on demand.
+**When to use:** For switching between visualizer modes.
+**Trade-offs:** Simple, no loading screen needed for small scenes. May want preloading later if modes get heavy.
+
+```gdscript
+# mode_manager.gd
+extends Node
+
+signal mode_changed(mode_name: String)
+
+var _mode_container: Node3D  # Set from main scene
+var _active_mode: Node = null
+var _modes: Dictionary = {}  # name -> PackedScene path
+
+func register_mode(name: String, scene_path: String) -> void:
+    _modes[name] = scene_path
+
+func switch_to(name: String) -> void:
+    if _active_mode:
+        _active_mode.queue_free()
+        _active_mode = null
+    var scene: PackedScene = load(_modes[name])
+    _active_mode = scene.instantiate()
+    _mode_container.add_child(_active_mode)
+    mode_changed.emit(name)
+```
+
+### Pattern 4: SubViewport Feedback Loop (Milkdrop Warp)
+
+**What:** Two SubViewports ping-pong: frame N renders into VP-A reading VP-B's texture, frame N+1 renders into VP-B reading VP-A's texture. This creates the Milkdrop motion/persistence effect.
+**When to use:** WarpTunnelMode and any future modes needing frame accumulation.
+**Trade-offs:** Requires 2 SubViewport textures in VRAM. At 1080x1080 per eye that is ~16MB. Negligible on desktop GPU. The 1-frame delay in SubViewport texture reads is actually beneficial here (it IS the previous frame).
+
+**Scene structure for WarpTunnelMode:**
+```
+WarpTunnel (Node3D)
+├── SubViewportA (SubViewport)
+│   └── WarpQuadA (ColorRect with warp.gdshader)
+│       reads texture from SubViewportB
+├── SubViewportB (SubViewport)
+│   └── WarpQuadB (ColorRect with warp.gdshader)
+│       reads texture from SubViewportA
+├── DisplayMesh (MeshInstance3D - sphere or cylinder surrounding player)
+│   material reads from whichever SubViewport was last written
+└── WarpTunnelScript.gd
+    flips which SubViewport is active each frame
+```
+
+**Warp shader concept:**
+```glsl
+shader_type canvas_item;
+
+uniform sampler2D previous_frame;  // SubViewport texture
+global uniform vec4 audio_bands_low;
+global uniform float audio_beat;
+global uniform float audio_time;
+
+void fragment() {
+    vec2 uv = UV;
+    // Milkdrop-style UV warp driven by audio
+    float bass = audio_bands_low.y;  // bass band
+    float sub = audio_bands_low.x;   // sub-bass
+
+    // Radial zoom driven by bass
+    vec2 center = vec2(0.5);
+    vec2 dir = uv - center;
+    float zoom = 1.0 - bass * 0.02;
+    uv = center + dir * zoom;
+
+    // Rotation driven by sub-bass
+    float angle = sub * 0.01;
+    float c = cos(angle), s = sin(angle);
+    uv -= center;
+    uv = vec2(uv.x * c - uv.y * s, uv.x * s + uv.y * c);
+    uv += center;
+
+    // Sample previous frame at warped coordinates
+    vec3 col = texture(previous_frame, uv).rgb;
+
+    // Decay (prevents washout)
+    col *= 0.97;
+
+    // Add new content on beat
+    if (audio_beat > 0.5) {
+        float ring = smoothstep(0.3, 0.31, length(UV - center));
+        col += vec3(ring * 0.5, ring * 0.3, ring * 0.8);
+    }
+
+    COLOR = vec4(col, 1.0);
+}
+```
+
+### Pattern 5: Simple Beat Detection
+
+**What:** Detect beats by watching energy spikes in the sub-bass/bass bands, using a running average and threshold.
+**When to use:** For pulse effects, mode transition sync, visual accents.
+**Trade-offs:** Not a real onset detector. Works well for electronic music with clear kicks. May false-trigger on complex acoustic music. Good enough for v2.0.
+
+```gdscript
+# In AudioManager
+var _energy_history: Array[float] = []
+const HISTORY_SIZE: int = 30  # ~0.5 seconds at 60fps
+const BEAT_THRESHOLD: float = 1.4  # 40% above average
+
+func _detect_beat(data: AudioData) -> void:
+    var bass_energy: float = data.bands[0] + data.bands[1]  # sub-bass + bass
+    _energy_history.append(bass_energy)
+    if _energy_history.size() > HISTORY_SIZE:
+        _energy_history.pop_front()
+
+    var avg: float = 0.0
+    for e in _energy_history:
+        avg += e
+    avg /= _energy_history.size()
+
+    data.beat = bass_energy > avg * BEAT_THRESHOLD and _energy_history.size() >= HISTORY_SIZE
+```
+
+## Data Flow
+
+### Per-Frame Audio Pipeline (v2.0)
+
+```
+Frame start
+    │
+    ▼
+AudioManager._process()
+    │
+    ├── 1. AudioEffectSpectrumAnalyzerInstance.get_magnitude_for_frequency_range()
+    │      Called 7x (one per band) on single Capture bus = 7 float values
+    │
+    ├── 2. Normalize to 0-1, apply attack/decay smoothing (existing logic)
+    │
+    ├── 3. Beat detection: compare bass energy to running average
+    │
+    ├── 4. Update AudioData: { bands[7], energy, peak_frequency, beat }
+    │
+    ▼
+ShaderBridge._process()
+    │
+    ├── 5. Set global shader uniforms:
+    │      audio_energy = data.energy
+    │      audio_peak_freq = data.peak_frequency
+    │      audio_bands_low = Vector4(bands[0..3])
+    │      audio_bands_high = Vector4(bands[4..6], beat)
+    │      audio_beat = 1.0 if beat else 0.0
+    │      audio_time = elapsed seconds
+    │
+    ▼
+Active mode's shaders read global uniforms automatically
+    │
+    ▼
+GPU renders frame
+```
+
+### Mode Switching Flow
+
+```
+User presses controller button (e.g., B / Y)
+    │
+    ▼
+main.gd or InputManager detects XR action
+    │
+    ▼
+ModeManager.switch_to(next_mode_name)
+    │
+    ├── queue_free() current mode scene
+    ├── load() + instantiate() new mode scene
+    ├── add_child() to mode container
+    └── emit mode_changed signal
+    │
+    ▼
+New mode's shaders immediately read global uniforms
+(no handoff needed — uniforms are global)
+```
+
+### BlackHole Audio Path
+
+```
+System audio (Spotify, etc.)
+    │
+    ▼
+macOS Multi-Output Device
+    ├──► Speakers/headphones (user hears audio)
+    └──► BlackHole 2ch (virtual loopback)
+            │
+            ▼
+         Godot AudioStreamMicrophone (input_device = "BlackHole 2ch")
+            │
+            ▼
+         "Capture" bus ──► SpectrumAnalyzer ──► AudioManager reads FFT
+            │
+            ▼
+         Master bus (MUTED — no Godot audio output to avoid feedback)
+```
+
+**Key insight:** Godot does NOT play audio. It only listens. The user hears audio through the Multi-Output Device's speakers/headphones path. Godot's Master bus must be muted to prevent the captured audio from playing back through Godot's output (which would cause echo/feedback if both hit the same speakers).
+
+## Integration Points
+
+### External: macOS Audio System
+
+| Integration | Mechanism | Setup Required |
+|-------------|-----------|----------------|
+| BlackHole 2ch | Virtual audio driver, appears as input device | Install BlackHole, create Multi-Output Device in Audio MIDI Setup |
+| AudioServer.input_device | Godot API to select BlackHole by name | `audio/driver/enable_input = true` in project settings |
+| Multi-Output Device | macOS aggregate device combining speakers + BlackHole | One-time config in Audio MIDI Setup |
+
+**macOS audio input fix:** Godot had a macOS audio recording bug (AudioUnitRender error -50) through all 4.x versions. [Fixed by PR #111691](https://github.com/godotengine/godot/issues/106904), merged before Godot 4.6. Should work in Godot 4.6+.
+
+### Internal: Component Boundaries
+
+| Boundary | Communication | Notes |
+|----------|---------------|-------|
+| AudioManager --> ShaderBridge | ShaderBridge reads `AudioManager.audio_data` (single AudioData) | Was `stem_data` array, now single instance |
+| ShaderBridge --> All shaders | Global shader uniforms | Shaders never import AudioManager. They read `global uniform` values. Fully decoupled. |
+| ModeManager --> Mode scenes | `add_child()` / `queue_free()` | Modes are dumb scenes. ModeManager owns lifecycle. |
+| ModeManager --> AudioManager | Optional: listen for beat events to sync transitions | Nice-to-have, not required for v2.0 |
+| XR Input --> ModeManager | Direct call: `ModeManager.switch_to(name)` | Simple. No event bus needed for 2 modes. |
+
+## Anti-Patterns
+
+### Anti-Pattern 1: Routing BlackHole Audio Through Godot's Output
+
+**What people do:** Let the captured mic audio play through Godot's Master bus so users hear it.
+**Why it's wrong:** Creates feedback loop or echo. The user already hears audio through the Multi-Output Device. Godot re-playing it doubles the audio.
+**Do this instead:** Mute the Master bus (or the Capture bus's send). Godot is listen-only.
+
+### Anti-Pattern 2: Per-Mode Shader Uniform Setting
+
+**What people do:** Each mode script manually calls `set_shader_parameter()` on its materials every frame.
+**Why it's wrong:** Duplicates audio-to-shader bridging logic across every mode. Global uniforms already exist.
+**Do this instead:** ShaderBridge sets global uniforms once. Mode shaders declare `global uniform` and read them directly. Zero per-mode uniform code needed.
+
+### Anti-Pattern 3: Complex Mode Transition System
+
+**What people do:** Build an elaborate state machine with enter/exit animations, preloading queues, transition shaders.
+**Why it's wrong:** Premature for 2 modes. Adds complexity with no user-visible benefit.
+**Do this instead:** `queue_free()` old mode, `instantiate()` new mode. If there's a visible pop, add a 0.1s fade-to-black later. Revisit when there are 5+ modes.
+
+### Anti-Pattern 4: Dual SubViewport Without Clear Ownership
+
+**What people do:** Let both SubViewports render simultaneously, unclear which is "current."
+**Why it's wrong:** GPU renders both every frame. Wastes half the work. Can cause visual artifacts.
+**Do this instead:** Use `SubViewport.render_target_update_mode = UPDATE_DISABLED` on the inactive one. Flip each frame. Only one renders per frame.
+
+### Anti-Pattern 5: Keeping Stem Architecture "Just in Case"
+
+**What people do:** Keep 4 buses, 4 players, stem sync logic alongside the new BlackHole path.
+**Why it's wrong:** Dead code. Confuses the uniform namespace. Stems are confirmed dead end.
+**Do this instead:** Remove stem buses, stem players, stem sync. Clean break. If stems come back (via Demucs), add them as a new input source behind the same AudioData interface.
+
+## Build Order (Dependency-Driven)
+
+This order ensures each piece can be tested in isolation before composing.
+
+| Order | Component | Depends On | Testable When |
+|-------|-----------|-----------|---------------|
+| 1 | **BlackHole audio capture** | macOS setup, project settings | Can see FFT data in debug overlay from Spotify audio |
+| 2 | **AudioManager refactor** | BlackHole capture working | Single AudioData updates from system audio, debug overlay shows bands |
+| 3 | **ShaderBridge refactor** | AudioManager refactor | test_reactive.gdshader responds to system audio |
+| 4 | **Shader globals cleanup** | ShaderBridge refactor | project.godot has clean unified uniform names |
+| 5 | **ModeManager** | Needs mode container in main scene | Can register and switch between placeholder scenes |
+| 6 | **SpectrumBarsMode** | ModeManager, ShaderBridge | Spatial bars react to music in VR |
+| 7 | **WarpTunnelMode** | ModeManager, ShaderBridge | Milkdrop-style warp reacts to music in VR |
+| 8 | **Controller mode switching** | ModeManager, XR input | Press button, mode changes |
+
+**Phases 1-4 are the foundation refactor.** They modify existing code and can be built/tested with the existing debug overlay. No new visual modes needed.
+
+**Phases 5-8 are additive.** Each adds new capability on the working foundation.
 
 ## Sources
 
+- [Godot AudioStreamMicrophone Docs](https://docs.godotengine.org/en/stable/classes/class_audiostreammicrophone.html)
 - [Godot AudioEffectSpectrumAnalyzer Docs](https://docs.godotengine.org/en/stable/classes/class_audioeffectspectrumanalyzer.html)
-- [Godot Setting up XR](https://docs.godotengine.org/en/stable/tutorials/xr/setting_up_xr.html)
-- [Godot Sync with Audio](https://docs.godotengine.org/en/stable/tutorials/audio/sync_with_audio.html)
+- [Godot Recording with Microphone Tutorial](https://docs.godotengine.org/en/stable/tutorials/audio/recording_with_microphone.html)
+- [Godot SubViewport as Texture](https://docs.godotengine.org/en/stable/tutorials/shaders/using_viewport_as_texture.html)
+- [Milkdrop Preset Authoring Guide](https://www.geisswerks.com/milkdrop/milkdrop_preset_authoring.html)
 - [projectM Architecture](https://github.com/projectM-visualizer/projectm)
-- [Milkdrop Shader Converter](https://github.com/jberg/milkdrop-shader-converter)
-- [Quest 3 XR Performance Considerations (Godot Forum)](https://forum.godotengine.org/t/performance-considerations-for-stand-alone-xr/52324)
+- [Godot macOS Audio Input Fix (Issue #106904)](https://github.com/godotengine/godot/issues/106904)
+- [BlackHole Virtual Audio](https://github.com/ExistentialAudio/BlackHole)
+- [Frame Accumulation in Godot (Forum)](https://forum.godotengine.org/t/frame-accumulation-effect/131100/4)
+
+---
+*Architecture research for: PCVR Music Visualizer v2.0 — FFT-first with BlackHole*
+*Researched: 2026-04-16*
