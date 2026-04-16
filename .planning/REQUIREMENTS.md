@@ -31,7 +31,7 @@
 ### Infrastructure
 
 - [x] **INF-01**: AudioManager autoload provides normalized audio data to all modes every frame
-- [ ] **INF-02**: Shader uniform bridge passes audio data (energy, frequency bands) to GPU shaders per frame
+- [x] **INF-02**: Shader uniform bridge passes audio data (energy, frequency bands) to GPU shaders per frame
 
 ## v2 Requirements
 
@@ -89,7 +89,7 @@
 | VIS-01 | Phase 2 | Pending |
 | VIS-02 | Phase 2 | Pending |
 | INF-01 | Phase 1 | Complete |
-| INF-02 | Phase 1 | Pending |
+| INF-02 | Phase 1 | Complete |
 
 **Coverage:**
 - v1 requirements: 13 total
