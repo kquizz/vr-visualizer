@@ -28,6 +28,9 @@ var _capture_device: String = ""
 ## Silent frame counter for signal detection
 var _silent_frames: int = 0
 
+## Reference to the mic stream player for diagnostics
+var _player: AudioStreamPlayer
+
 func _ready() -> void:
 	# Defer initialization to ensure AudioServer is fully ready
 	call_deferred("_initialize")
@@ -52,11 +55,11 @@ func _initialize() -> void:
 	print("AudioManager: Listening on %s" % _capture_device)
 
 	# Create AudioStreamPlayer with mic input on Capture bus
-	var player := AudioStreamPlayer.new()
-	player.stream = AudioStreamMicrophone.new()
-	player.bus = "Capture"
-	add_child(player)
-	player.play()
+	_player = AudioStreamPlayer.new()
+	_player.stream = AudioStreamMicrophone.new()
+	_player.bus = "Capture"
+	add_child(_player)
+	_player.play()
 
 	# Get spectrum analyzer from Capture bus
 	var bus_idx := AudioServer.get_bus_index("Capture")

@@ -33,7 +33,9 @@ func _process(_delta: float) -> void:
 
 	var text: String = "=== Audio Capture ===\n"
 	text += "Status: %s\n" % status
-	text += "Energy: %.3f\n\n" % data.energy
+	text += "Energy: %.3f\n" % data.energy
+
+	text += "\n"
 
 	# 7 raw bands
 	text += "--- Raw Bands ---\n"
