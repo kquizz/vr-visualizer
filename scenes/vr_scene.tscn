@@ -1,9 +1,9 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/fallback_camera.gd" id="fallback_camera_script"]
 [ext_resource type="Shader" path="res://shaders/test_reactive.gdshader" id="test_reactive_shader"]
 [ext_resource type="Script" path="res://scripts/debug_overlay.gd" id="debug_overlay_script"]
-[ext_resource type="Script" path="res://scripts/stem_loader.gd" id="stem_loader_script"]
+
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky01"]
 sky_top_color = Color(0.02, 0.02, 0.12, 1)
@@ -53,6 +53,3 @@ material_override = SubResource("ShaderMaterial_reactive01")
 
 [node name="DebugOverlay" type="Node3D" parent="."]
 script = ExtResource("debug_overlay_script")
-
-[node name="StemLoader" type="Node" parent="."]
-script = ExtResource("stem_loader_script")
