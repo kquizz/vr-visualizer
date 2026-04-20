@@ -79,12 +79,12 @@ void fragment() {
 	// Inject color at the center; warp spreads it outward over frames.
 	// Edges only get decayed/warped content from previous frames.
 	float dist = length(UV - vec2(0.5));
-	float inject_mask = smoothstep(0.35, 0.0, dist);
+	float inject_mask = smoothstep(0.5, 0.05, dist);
 	prev.rgb = mix(prev.rgb, audio_color, inject_mask * audio_inject_amount);
 
 	// Noise injection (periodic bursts, controlled by GDScript)
 	vec3 noise_val = texture(noise_tex, uv + vec2(TIME * 0.01)).rgb;
-	float noise_mask = smoothstep(0.4, 0.1, dist);
+	float noise_mask = smoothstep(0.5, 0.15, dist);
 	prev.rgb += noise_val * noise_amount * noise_mask;
 
 	COLOR = vec4(clamp(prev.rgb, 0.0, 1.0), 1.0);
