@@ -31,6 +31,11 @@ var _silent_frames: int = 0
 ## Reference to the mic stream player for diagnostics
 var _player: AudioStreamPlayer
 
+## AudioEffectCapture instance for raw PCM extraction
+var _capture_effect: AudioEffectCapture
+## Buffer for PCM samples, reused each frame
+var _pcm_buffer: PackedVector2Array
+
 func _ready() -> void:
 	# Defer initialization to ensure AudioServer is fully ready
 	call_deferred("_initialize")
@@ -76,6 +81,13 @@ func _initialize() -> void:
 		return
 
 	_is_capturing = true
+
+	# Get AudioEffectCapture (effect index 1 on Capture bus)
+	_capture_effect = AudioServer.get_bus_effect(bus_idx, 1) as AudioEffectCapture
+	if _capture_effect == null:
+		push_warning("AudioManager: No AudioEffectCapture on Capture bus (index 1)")
+	else:
+		print("AudioManager: PCM capture ready (buffer_length=%.1fs)" % _capture_effect.buffer_length)
 
 func _process(_delta: float) -> void:
 	if not _is_capturing or _analyzer == null:
@@ -123,3 +135,23 @@ func _update_signal_status() -> void:
 		_silent_frames = 0
 		has_signal = true
 		audio_data.has_signal = true
+
+## Returns raw PCM samples as interleaved stereo PackedFloat32Array.
+## Returns empty array if no capture or no frames available.
+## Caller should request num_frames (e.g., 512 for projectM).
+func get_pcm_buffer(num_frames: int = 512) -> PackedFloat32Array:
+	if _capture_effect == null:
+		return PackedFloat32Array()
+	var available := _capture_effect.get_frames_available()
+	if available < num_frames:
+		if available == 0:
+			return PackedFloat32Array()
+		num_frames = available
+	_pcm_buffer = _capture_effect.get_buffer(num_frames)
+	# Convert PackedVector2Array (stereo L/R) to interleaved PackedFloat32Array
+	var interleaved := PackedFloat32Array()
+	interleaved.resize(num_frames * 2)
+	for i in range(num_frames):
+		interleaved[i * 2] = _pcm_buffer[i].x      # Left channel
+		interleaved[i * 2 + 1] = _pcm_buffer[i].y  # Right channel
+	return interleaved

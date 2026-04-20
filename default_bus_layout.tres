@@ -4,6 +4,9 @@
 buffer_length = 0.1
 fft_size = 3
 
+[sub_resource type="AudioEffectCapture" id="2"]
+buffer_length = 0.1
+
 [resource]
 bus/1/name = &"Capture"
 bus/1/solo = false
@@ -13,3 +16,5 @@ bus/1/volume_db = -80.0
 bus/1/send = &"Master"
 bus/1/effect/0/effect = SubResource("1")
 bus/1/effect/0/enabled = true
+bus/1/effect/1/effect = SubResource("2")
+bus/1/effect/1/enabled = true
