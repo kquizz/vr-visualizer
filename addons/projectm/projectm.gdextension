@@ -4,7 +4,7 @@ compatibility_minimum = "4.2"
 reloadable = true
 
 [libraries]
-macos.debug = "res://addons/projectm/bin/libprojectm_gdext.macos.template_debug.framework"
-macos.release = "res://addons/projectm/bin/libprojectm_gdext.macos.template_release.framework"
+macos.debug.arm64 = "res://addons/projectm/bin/libprojectm_gdext.macos.template_debug.arm64.dylib"
+macos.release.arm64 = "res://addons/projectm/bin/libprojectm_gdext.macos.template_release.arm64.dylib"
 windows.debug.x86_64 = "res://addons/projectm/bin/libprojectm_gdext.windows.template_debug.x86_64.dll"
 windows.release.x86_64 = "res://addons/projectm/bin/libprojectm_gdext.windows.template_release.x86_64.dll"

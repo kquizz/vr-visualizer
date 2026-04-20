@@ -10,7 +10,7 @@ env.Append(LIBS=["projectM"])
 
 # macOS OpenGL framework
 if env["platform"] == "macos":
-    env.Append(FRAMEWORKS=["OpenGL"])
+    env.Append(LINKFLAGS=["-framework", "OpenGL"])
 
 # Extension source files
 env.Append(CPPPATH=["src/"])
