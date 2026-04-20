@@ -81,6 +81,6 @@ Phases execute in numeric order: 2 -> 3 -> 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 2. Audio Capture Refactor | 0/2 | Planning complete | - |
+| 2. Audio Capture Refactor | 1/2 | In Progress|  |
 | 3. Spectrum Bars + Mode System | 0/? | Not started | - |
 | 4. Milkdrop Warp Mode | 0/? | Not started | - |
