@@ -1,97 +1,88 @@
 shader_type canvas_item;
 
 uniform sampler2D prev_frame : filter_linear;
-
-// Warp
-uniform float warp_zoom : hint_range(0.9, 1.3) = 1.0;
-uniform float warp_rotation : hint_range(-0.3, 0.3) = 0.0;
-uniform float warp_dx : hint_range(-0.1, 0.1) = 0.0;
-uniform float warp_dy : hint_range(-0.1, 0.1) = 0.0;
-uniform float decay : hint_range(0.85, 1.0) = 0.97;
-uniform float hue_shift : hint_range(0.0, 0.05) = 0.0;
-
-// Noise
 uniform sampler2D noise_tex : filter_linear;
-uniform float noise_amount : hint_range(0.0, 0.15) = 0.0;
 
-// Two-color injection: warm center, cool edge
-uniform vec3 color_inner = vec3(1.0, 0.3, 0.1);
-uniform vec3 color_outer = vec3(0.1, 0.4, 1.0);
-uniform float audio_inject_amount : hint_range(0.0, 1.0) = 0.1;
+// Audio data (set from GDScript each frame)
+uniform float bass = 0.0;
+uniform float mids = 0.0;
+uniform float highs = 0.0;
+uniform float energy = 0.0;
 
-uniform bool symmetry_enabled = false;
-
-vec3 rgb2hsv(vec3 c) {
-	vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
-	vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
-	vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
-	float d = q.x - min(q.w, q.y);
-	float e = 1.0e-10;
-	return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
-}
-
-vec3 hsv2rgb(vec3 c) {
-	vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
-	vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
-	return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
-}
+// Warp params
+uniform float decay : hint_range(0.85, 1.0) = 0.96;
+uniform float hue_shift : hint_range(0.0, 0.05) = 0.005;
 
 void fragment() {
 	vec2 uv = UV;
+	vec2 center = vec2(0.5);
+	vec2 delta = uv - center;
+	float dist = length(delta);
+	float angle = atan(delta.y, delta.x);
 
-	if (symmetry_enabled) {
-		vec2 centered = uv - 0.5;
-		float angle = atan(centered.y, centered.x);
-		float radius = length(centered);
-		angle = mod(angle, PI / 2.0);
-		uv = vec2(cos(angle), sin(angle)) * radius + 0.5;
-	}
+	// === GENERATE NEW CONTENT EACH FRAME (not just feedback) ===
 
-	// Asymmetric warp with drifting center
-	vec2 warp_center = vec2(0.5) + vec2(warp_dx, warp_dy);
-	vec2 delta = uv - warp_center;
-	float r = length(delta);
-	float a = atan(delta.y, delta.x);
+	// Tunnel rings — concentric rings that pulse with bass
+	float ring_freq = 8.0 + bass * 12.0;
+	float ring_phase = TIME * (1.0 + energy * 2.0);
+	float rings = sin(dist * ring_freq - ring_phase) * 0.5 + 0.5;
+	rings = pow(rings, 3.0);  // Sharpen the rings
 
-	// Per-pixel variation from noise for organic flow
-	vec2 n_uv = uv * 1.5 + vec2(TIME * 0.02, TIME * 0.015);
-	vec2 ns = texture(noise_tex, n_uv).rg;
-	float lz = warp_zoom + (ns.x - 0.5) * 0.025;
-	float lr = warp_rotation + (ns.y - 0.5) * 0.04;
+	// Radial spokes — rotate with time, modulated by mids
+	float spoke_count = 6.0 + mids * 10.0;
+	float spoke_rotation = TIME * 0.5 + mids * 0.3;
+	float spokes = sin(angle * spoke_count + spoke_rotation) * 0.5 + 0.5;
+	spokes = pow(spokes, 4.0);
 
-	r /= lz;
-	a += lr;
-	a += r * warp_rotation * 0.5;  // Mild spiral
-	delta = vec2(cos(a), sin(a)) * r;
-	vec2 warped_uv = clamp(delta + warp_center, vec2(0.002), vec2(0.998));
+	// Combine: rings × spokes creates a web/grid that warps
+	float pattern = rings * 0.7 + spokes * 0.3 * rings;
 
-	vec4 prev = texture(prev_frame, warped_uv);
-	prev.rgb *= decay;
+	// Color: map angle + time to hue for rainbow tunnel effect
+	float hue = fract(angle / TAU + TIME * 0.1 + dist * 0.5);
+	// Shift hue with audio — bass pushes warm, highs push cool
+	hue = fract(hue + bass * 0.15 - highs * 0.1);
+	float sat = 0.7 + energy * 0.3;
+	float val = pattern * (0.6 + energy * 0.4);
 
-	// Aggressive hue shift + saturation boost
-	if (length(prev.rgb) > 0.01) {
-		vec3 hsv = rgb2hsv(max(prev.rgb, vec3(0.0)));
-		hsv.x = fract(hsv.x + hue_shift);
-		hsv.y = min(hsv.y * 1.1, 1.0);
-		prev.rgb = hsv2rgb(hsv);
-	}
+	// HSV to RGB
+	vec3 K = vec3(1.0, 2.0 / 3.0, 1.0 / 3.0);
+	vec3 p = abs(fract(vec3(hue) + K) * 6.0 - vec3(3.0));
+	vec3 new_color = val * mix(vec3(1.0), clamp(p - vec3(1.0), 0.0, 1.0), sat);
 
-	// Two-color injection — warm blobs at center, cool blobs at edge
-	float dist = length(UV - vec2(0.5));
-	vec2 inj_uv = UV * 3.5 + vec2(TIME * 0.09, TIME * -0.07);
-	float inj_noise = texture(noise_tex, inj_uv).r;
+	// Noise texture adds organic detail
+	vec2 n_uv = uv * 3.0 + vec2(TIME * 0.05, TIME * -0.03);
+	float noise = texture(noise_tex, n_uv).r;
+	new_color *= 0.8 + noise * 0.4;
 
-	// Inner injection: noise-shaped blobs near center
-	float inner_mask = smoothstep(0.3, 0.02, dist) * smoothstep(0.25, 0.65, inj_noise);
-	// Outer injection: scattered blobs further out
-	float outer_mask = smoothstep(0.15, 0.4, dist) * smoothstep(0.5, 0.0, dist) * smoothstep(0.4, 0.75, inj_noise);
+	// === BLEND WITH FEEDBACK for trails ===
+	// Warp the previous frame (gentle zoom + rotation for trail smearing)
+	float fb_zoom = 1.01 + bass * 0.02;
+	float fb_rot = 0.01 + mids * 0.02;
+	float fb_r = dist / fb_zoom;
+	float fb_a = angle + fb_rot;
+	vec2 fb_uv = vec2(cos(fb_a), sin(fb_a)) * fb_r + center;
+	fb_uv = clamp(fb_uv, vec2(0.002), vec2(0.998));
+	vec3 prev = texture(prev_frame, fb_uv).rgb * decay;
 
-	prev.rgb = mix(prev.rgb, color_inner, inner_mask * audio_inject_amount);
-	prev.rgb = mix(prev.rgb, color_outer, outer_mask * audio_inject_amount * 0.6);
+	// Hue-shift the trails
+	// Simple hue rotation via matrix
+	float cs = cos(hue_shift * TAU);
+	float sn = sin(hue_shift * TAU);
+	mat3 hue_mat = mat3(
+		vec3(0.299 + 0.701*cs + 0.168*sn, 0.299 - 0.299*cs - 0.328*sn, 0.299 - 0.300*cs + 1.25*sn),
+		vec3(0.587 - 0.587*cs + 0.330*sn, 0.587 + 0.413*cs + 0.035*sn, 0.587 - 0.588*cs - 1.05*sn),
+		vec3(0.114 - 0.114*cs - 0.497*sn, 0.114 - 0.114*cs + 0.292*sn, 0.114 + 0.886*cs - 0.203*sn)
+	);
+	prev = hue_mat * prev;
 
-	// Detail noise
-	vec3 dn = texture(noise_tex, uv * 2.5 + vec2(TIME * 0.05)).rgb;
-	prev.rgb += (dn - 0.5) * noise_amount * smoothstep(0.45, 0.1, dist);
+	// Final: blend new pattern with feedback trails
+	// New content is additive so it glows on top of trails
+	float trail_strength = 0.5 + energy * 0.2;
+	vec3 result = prev * trail_strength + new_color * (0.6 + energy * 0.4);
 
-	COLOR = vec4(clamp(prev.rgb, 0.0, 1.0), 1.0);
+	// Center glow — bright hot spot at the tunnel origin
+	float glow = exp(-dist * 4.0) * energy * 0.5;
+	result += vec3(1.0, 0.9, 0.7) * glow;
+
+	COLOR = vec4(clamp(result, 0.0, 1.0), 1.0);
 }
