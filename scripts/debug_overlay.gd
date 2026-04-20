@@ -16,6 +16,13 @@ func _ready() -> void:
 	_label.no_depth_test = true
 	_label.outline_size = 8
 	add_child(_label)
+	visible = false
+
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_ESCAPE:
+			visible = not visible
 
 func _process(_delta: float) -> void:
 	var data: AudioData = AudioManager.audio_data

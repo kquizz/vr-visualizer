@@ -56,7 +56,7 @@ grow_vertical = 2
 material = SubResource("ShaderMaterial_feedback")
 
 [node name="WarpDome" type="MeshInstance3D" parent="."]
-position = Vector3(0, 0, 0)
+position = Vector3(0, 1.7, 0)
 mesh = SubResource("SphereMesh_dome")
 material_override = SubResource("ShaderMaterial_display")
 
