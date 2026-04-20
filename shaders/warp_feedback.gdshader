@@ -1,7 +1,7 @@
 shader_type canvas_item;
 
-// Previous frame from ping-pong buffer
-uniform sampler2D prev_frame : filter_linear, repeat_enable;
+// Feedback: read viewport's own previous frame (requires CLEAR_MODE_NEVER on SubViewport)
+uniform sampler2D screen_texture : hint_screen_texture, filter_linear;
 
 // Audio-driven warp parameters (set from GDScript)
 uniform float warp_zoom : hint_range(0.9, 1.2) = 1.0;
@@ -64,8 +64,9 @@ void fragment() {
 	delta = vec2(cos(a), sin(a)) * r;
 	vec2 warped_uv = delta + center + vec2(warp_dx, warp_dy);
 
-	// Sample previous frame
-	vec4 prev = texture(prev_frame, warped_uv);
+	// Sample previous frame (clamp to avoid edge bleed)
+	vec2 clamped_uv = clamp(warped_uv, vec2(0.002), vec2(0.998));
+	vec4 prev = texture(screen_texture, clamped_uv);
 
 	// Decay (combined multiplicative + subtractive for stability)
 	prev.rgb = (prev.rgb - vec3(0.002)) * decay;

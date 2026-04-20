@@ -22,27 +22,16 @@ var _seeded: bool = false
 
 
 func _ready() -> void:
-	_shader_material = $PingPongSystem/SubViewportA/ColorRect.material
+	_shader_material = $FeedbackViewport/SubViewportA/ColorRect.material
 	$ResetTimer.timeout.connect(_on_reset_timer_timeout)
 	$ResetTimer.wait_time = reset_interval
-	call_deferred("_setup_viewport_textures")
+	# Wire WarpDome to read from the feedback viewport
+	call_deferred("_setup_dome_texture")
 
 
-func _setup_viewport_textures() -> void:
-	# ViewportTexture for prev_frame: SubViewportB -> ColorRect shader
-	var vt_b := ViewportTexture.new()
-	vt_b.viewport_path = get_node("PingPongSystem/SubViewportB").get_path()
-	_shader_material.set_shader_parameter("prev_frame", vt_b)
-
-	# ViewportTexture for CopySprite: SubViewportA -> Sprite2D in SubViewportB
-	var vt_a_copy := ViewportTexture.new()
-	vt_a_copy.viewport_path = get_node("PingPongSystem/SubViewportA").get_path()
-	$PingPongSystem/SubViewportB/CopySprite.texture = vt_a_copy
-
-	# ViewportTexture for WarpDome: SubViewportA -> dome material
-	var vt_a_dome := ViewportTexture.new()
-	vt_a_dome.viewport_path = get_node("PingPongSystem/SubViewportA").get_path()
-	$WarpDome.material_override.set_shader_parameter("warp_texture", vt_a_dome)
+func _setup_dome_texture() -> void:
+	var viewport := $FeedbackViewport/SubViewportA
+	$WarpDome.material_override.set_shader_parameter("warp_texture", viewport.get_texture())
 
 
 func _process(delta: float) -> void:
