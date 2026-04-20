@@ -1,26 +1,24 @@
 shader_type spatial;
 render_mode unshaded;
 
-global uniform float drums_energy;
-global uniform float bass_energy;
-global uniform float vocals_energy;
-global uniform float other_energy;
-global uniform vec4 drums_bands_low;
+global uniform float audio_energy;
+global uniform vec4 audio_bands_low;
+global uniform vec4 audio_channels;
 
 void fragment() {
-	// Color channels driven by stem energy:
-	// Red = drums, Green = bass, Blue = vocals
-	vec3 color = vec3(drums_energy, bass_energy, vocals_energy);
+	// Color driven by grouped channels:
+	// Red = LOW (bass), Green = MID_LOW (melody), Blue = HIGH (sparkle)
+	vec3 color = vec3(audio_channels.x, audio_channels.y, audio_channels.w);
 
-	// Add some variation from drum sub-bass band
-	float pulse = drums_bands_low.x * 0.5;
+	// Sub-bass pulse from raw bands
+	float pulse = audio_bands_low.x * 0.5;
 
 	ALBEDO = color + vec3(pulse);
 	EMISSION = color * 2.0 + vec3(pulse) * 3.0;
 }
 
 void vertex() {
-	// Scale mesh based on combined energy
-	float scale_factor = 1.0 + (drums_energy + bass_energy) * 0.3;
+	// Scale mesh based on overall energy
+	float scale_factor = 1.0 + audio_energy * 0.3;
 	VERTEX *= scale_factor;
 }

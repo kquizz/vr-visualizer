@@ -36,67 +36,23 @@ textures/vram_compression/import_etc2_astc=true
 
 [shader_globals]
 
-drums_energy={
+audio_energy={
 "type": "float",
 "value": 0.0
 }
-drums_peak_freq={
+audio_peak_freq={
 "type": "float",
 "value": 0.0
 }
-drums_bands_low={
+audio_bands_low={
 "type": "vec4",
 "value": Vector4(0, 0, 0, 0)
 }
-drums_bands_high={
+audio_bands_high={
 "type": "vec4",
 "value": Vector4(0, 0, 0, 0)
 }
-bass_energy={
-"type": "float",
-"value": 0.0
-}
-bass_peak_freq={
-"type": "float",
-"value": 0.0
-}
-bass_bands_low={
-"type": "vec4",
-"value": Vector4(0, 0, 0, 0)
-}
-bass_bands_high={
-"type": "vec4",
-"value": Vector4(0, 0, 0, 0)
-}
-vocals_energy={
-"type": "float",
-"value": 0.0
-}
-vocals_peak_freq={
-"type": "float",
-"value": 0.0
-}
-vocals_bands_low={
-"type": "vec4",
-"value": Vector4(0, 0, 0, 0)
-}
-vocals_bands_high={
-"type": "vec4",
-"value": Vector4(0, 0, 0, 0)
-}
-other_energy={
-"type": "float",
-"value": 0.0
-}
-other_peak_freq={
-"type": "float",
-"value": 0.0
-}
-other_bands_low={
-"type": "vec4",
-"value": Vector4(0, 0, 0, 0)
-}
-other_bands_high={
+audio_channels={
 "type": "vec4",
 "value": Vector4(0, 0, 0, 0)
 }
