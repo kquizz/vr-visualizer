@@ -43,7 +43,7 @@ Requirements for FFT-First Visualizer milestone. Each maps to roadmap phases.
 ### Infrastructure
 
 - [x] **INF-03**: ModeManager system loads and switches between visualizer mode scenes
-- [ ] **INF-04**: Both modes render correctly in VR (Quest 3 via Virtual Desktop) and flat-screen fallback
+- [x] **INF-04**: Both modes render correctly in VR (Quest 3 via Virtual Desktop) and flat-screen fallback
 
 ## v2.x Requirements
 
@@ -99,7 +99,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INF-03 | Phase 3 | Complete |
 | VIS-03 | Phase 4 | Complete |
 | VIS-04 | Phase 4 | Complete |
-| INF-04 | Phase 4 | Pending |
+| INF-04 | Phase 4 | Complete |
 
 **Coverage:**
 - v2.0 requirements: 10 total

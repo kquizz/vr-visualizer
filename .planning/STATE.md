@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: FFT-First Visualizer
 status: in_progress
-stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-04-20T15:36:00Z"
-last_activity: 2026-04-20 -- Completed 05-01 projectM GDExtension wrapper
+stopped_at: Completed 05-02-PLAN.md
+last_updated: "2026-04-20T15:39:44Z"
+last_activity: 2026-04-20 -- Completed 05-02 milkdrop mode scene with PCM audio
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 9
-  completed_plans: 6
-  percent: 83
+  completed_plans: 7
+  percent: 67
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-04-16)
 ## Current Position
 
 Phase: 5 of 5 (Milkdrop Rendering Engine with Preset Loader) -- IN PROGRESS
-Plan: 2 of 3 in current phase (next)
-Status: Phase 5 Plan 01 complete
-Last activity: 2026-04-20 -- Completed 05-01 projectM GDExtension wrapper
+Plan: 3 of 3 in current phase (next)
+Status: Phase 5 Plan 02 complete
+Last activity: 2026-04-20 -- Completed 05-02 milkdrop mode scene with PCM audio
 
-Progress: [███████░░░] 67%
+Progress: [████████░░] 78%
 
 ## Performance Metrics
 
@@ -52,6 +52,7 @@ Progress: [███████░░░] 67%
 | Phase 03 P02 | 8min | 2 tasks | 2 files |
 | Phase 04 P01 | 2min | 2 tasks | 4 files |
 | Phase 05 P01 | 6min | 2 tasks | 7 files |
+| Phase 05 P02 | 2min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -81,6 +82,9 @@ Recent decisions affecting current work:
 - [Phase 05-01]: Used projectM v3 C++ API instead of v4 C API (Homebrew ships v3.1.12)
 - [Phase 05-01]: Build restricted to arm64 only (Homebrew projectM is arm64-only)
 - [Phase 05-01]: GL texture readback via glGetTexImage for texture transfer to Godot
+- [Phase 05-02]: AudioEffectCapture coexists with SpectrumAnalyzer on same Capture bus (effect index 1)
+- [Phase 05-02]: PCM buffer defaults to 512 frames (projectM typical expectation)
+- [Phase 05-02]: projectM renders at 1024x1024 (can increase to 2048 if perf allows)
 
 ### Roadmap Evolution
 
@@ -99,6 +103,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-20T15:36:00Z
-Stopped at: Completed 05-01-PLAN.md
-Resume file: .planning/phases/05-milkdrop-rendering-engine-with-preset-loader/05-01-SUMMARY.md
+Last session: 2026-04-20T15:39:44Z
+Stopped at: Completed 05-02-PLAN.md
+Resume file: .planning/phases/05-milkdrop-rendering-engine-with-preset-loader/05-02-SUMMARY.md
