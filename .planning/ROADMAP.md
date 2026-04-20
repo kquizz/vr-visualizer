@@ -74,13 +74,35 @@ Plans:
 - [x] 04-01-PLAN.md — SubViewport ping-pong feedback loop, warp shaders, inverted sphere dome, audio mapping
 - [ ] 04-02-PLAN.md — ModeManager warp registration, fade-to-black transition, keyboard toggle, visual verification
 
+### Phase 5: Milkdrop Rendering Engine with Preset Loader
+**Goal**: A proper MilkDrop rendering engine replaces Phase 4's basic warp mode, implementing grid mesh warp, NSEEL equation interpreter, waveform overlays, blur pipeline, and .milk preset file loading for real MilkDrop preset compatibility
+**Depends on**: Phase 4 (basic warp mode, ModeManager, dome infrastructure)
+**Requirements**: VIS-03, VIS-04, INF-04
+**Success Criteria** (what must be TRUE):
+  1. NSEEL interpreter correctly evaluates MilkDrop preset equations (per-frame, per-pixel, custom wave/shape)
+  2. .milk preset files load and produce visible, animated MilkDrop-style visuals with warp, waveforms, and blur
+  3. 128x96 grid mesh warp with 7-step UV transform chain produces organic flowing patterns matching MilkDrop's signature look
+  4. Audio from any desktop source drives preset parameters (bass->zoom, mids->rotation, treb->color)
+  5. Mode switching via TAB between spectrum bars and milkdrop works with fade transition
+  6. Renders correctly in flat-screen fallback (macOS) and VR (Quest 3 via Virtual Desktop)
+**Plans**: 6 plans
+
+Plans:
+- [ ] 05-01-PLAN.md — NSEEL interpreter (tokenizer, parser, evaluator, 25+ built-in functions) via TDD
+- [ ] 05-02-PLAN.md — MilkdropPreset data class, audio bridge, 5 test .milk preset files
+- [ ] 05-03-PLAN.md — Preset loader (.milk file parser with NSEEL AST compilation)
+- [ ] 05-04-PLAN.md — Grid mesh, warp shader, ping-pong SubViewports, renderer orchestrator
+- [ ] 05-05-PLAN.md — Waveform drawing, custom wave/shape evaluators, blur pipeline
+- [ ] 05-06-PLAN.md — Scene assembly, ModeManager integration, Phase 4 removal, visual verification
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 2 -> 3 -> 4
+Phases execute in numeric order: 2 -> 3 -> 4 -> 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 2. Audio Capture Refactor | 2/2 | Complete   | 2026-04-20 |
 | 3. Spectrum Bars + Mode System | 2/2 | Complete | 2026-04-20 |
 | 4. Milkdrop Warp Mode | 1/2 | In progress | - |
+| 5. Milkdrop Rendering Engine | 0/6 | Planned | - |
