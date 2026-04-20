@@ -1,7 +1,6 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/fallback_camera.gd" id="fallback_camera_script"]
-[ext_resource type="Shader" path="res://shaders/test_reactive.gdshader" id="test_reactive_shader"]
 [ext_resource type="Script" path="res://scripts/debug_overlay.gd" id="debug_overlay_script"]
 
 
@@ -22,14 +21,10 @@ ambient_light_color = Color(0.1, 0.1, 0.3, 1)
 ambient_light_energy = 0.8
 tonemap_mode = 2
 glow_enabled = true
-glow_intensity = 0.4
-
-[sub_resource type="SphereMesh" id="SphereMesh_test01"]
-radius = 0.5
-height = 1.0
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_reactive01"]
-shader = ExtResource("test_reactive_shader")
+glow_intensity = 0.8
+glow_strength = 1.5
+glow_bloom = 0.3
+glow_hdr_threshold = 0.8
 
 [node name="VRScene" type="Node3D"]
 
@@ -46,10 +41,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.7, 0)
 current = false
 script = ExtResource("fallback_camera_script")
 
-[node name="TestReactiveMesh" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, -2)
-mesh = SubResource("SphereMesh_test01")
-material_override = SubResource("ShaderMaterial_reactive01")
+[node name="ModeContainer" type="Node3D" parent="."]
 
 [node name="DebugOverlay" type="Node3D" parent="."]
 script = ExtResource("debug_overlay_script")
