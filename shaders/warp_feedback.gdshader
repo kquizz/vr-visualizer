@@ -1,17 +1,16 @@
 shader_type canvas_item;
 
-// Previous frame (CPU-copied ImageTexture from GDScript)
 uniform sampler2D prev_frame : filter_linear;
 
-// Audio-driven warp parameters (set from GDScript)
+// Warp
 uniform float warp_zoom : hint_range(0.9, 1.3) = 1.0;
-uniform float warp_rotation : hint_range(-0.2, 0.2) = 0.0;
-uniform float warp_dx : hint_range(-0.05, 0.05) = 0.0;
-uniform float warp_dy : hint_range(-0.05, 0.05) = 0.0;
+uniform float warp_rotation : hint_range(-0.3, 0.3) = 0.0;
+uniform float warp_dx : hint_range(-0.1, 0.1) = 0.0;
+uniform float warp_dy : hint_range(-0.1, 0.1) = 0.0;
 uniform float decay : hint_range(0.85, 1.0) = 0.97;
 uniform float hue_shift : hint_range(0.0, 0.05) = 0.0;
 
-// Noise injection
+// Noise
 uniform sampler2D noise_tex : filter_linear;
 uniform float noise_amount : hint_range(0.0, 0.15) = 0.0;
 
@@ -40,7 +39,6 @@ vec3 hsv2rgb(vec3 c) {
 void fragment() {
 	vec2 uv = UV;
 
-	// Optional symmetry (kaleidoscope fold)
 	if (symmetry_enabled) {
 		vec2 centered = uv - 0.5;
 		float angle = atan(centered.y, centered.x);
@@ -49,19 +47,27 @@ void fragment() {
 		uv = vec2(cos(angle), sin(angle)) * radius + 0.5;
 	}
 
-	// UV warp: polar coordinate transform from center
-	vec2 center = vec2(0.5);
-	vec2 delta = uv - center;
+	// === ASYMMETRIC WARP ===
+	// The warp center drifts over time (via warp_dx/dy from GDScript).
+	// Per-pixel warp varies with noise so it's fluid, not uniform rings.
+	vec2 warp_center = vec2(0.5) + vec2(warp_dx, warp_dy);
+	vec2 delta = uv - warp_center;
 	float r = length(delta);
 	float a = atan(delta.y, delta.x);
 
-	// Apply warp — zoom pulls toward center, rotation swirls
-	r /= warp_zoom;
-	a += warp_rotation;
-	// Slight radial-dependent rotation for spiral effect
-	a += r * warp_rotation * 0.5;
+	// Per-pixel warp variation from noise — creates organic fluid distortion
+	vec2 noise_uv = uv * 1.5 + vec2(TIME * 0.02, TIME * 0.015);
+	vec2 noise_sample = texture(noise_tex, noise_uv).rg;
+	float local_zoom = warp_zoom + (noise_sample.x - 0.5) * 0.02;
+	float local_rot = warp_rotation + (noise_sample.y - 0.5) * 0.03;
+
+	// Apply warp with per-pixel variation
+	r /= local_zoom;
+	a += local_rot;
+	// Spiral: rotation increases with distance
+	a += r * warp_rotation * 0.8;
 	delta = vec2(cos(a), sin(a)) * r;
-	vec2 warped_uv = delta + center + vec2(warp_dx, warp_dy);
+	vec2 warped_uv = delta + warp_center;
 
 	// Sample previous frame
 	vec2 clamped_uv = clamp(warped_uv, vec2(0.002), vec2(0.998));
@@ -70,27 +76,28 @@ void fragment() {
 	// Decay
 	prev.rgb *= decay;
 
-	// Hue shift (skip when near zero to avoid HSV artifacts on black)
+	// Hue shift — keep colors vivid through feedback
 	if (hue_shift > 0.0001 && length(prev.rgb) > 0.01) {
-		vec3 hsv = rgb2hsv(prev.rgb);
+		vec3 hsv = rgb2hsv(max(prev.rgb, vec3(0.0)));
 		hsv.x = fract(hsv.x + hue_shift);
-		// Boost saturation slightly to keep colors vivid through the loop
-		hsv.y = min(hsv.y * 1.05, 1.0);
+		hsv.y = min(hsv.y * 1.08, 1.0);  // Boost saturation to fight desaturation
 		prev.rgb = hsv2rgb(hsv);
 	}
 
-	// Audio color injection — center-weighted ring pattern
-	// Creates a bright ring that warp pulls inward, more interesting than a blob
+	// === NOISE-SHAPED INJECTION ===
+	// Instead of a static ring, use noise to create organic blobs of color.
+	// The blobs move with time, creating constantly evolving shapes.
 	float dist = length(UV - vec2(0.5));
-	float ring = smoothstep(0.25, 0.15, dist) * smoothstep(0.0, 0.08, dist);
-	float blob = smoothstep(0.45, 0.05, dist);
-	float inject_mask = max(ring * 0.7, blob * 0.4);
+	vec2 inject_noise_uv = UV * 3.0 + vec2(TIME * 0.08, TIME * -0.06);
+	float inject_noise = texture(noise_tex, inject_noise_uv).r;
+	// Blend center falloff with noise — organic shape that favors center
+	float inject_mask = smoothstep(0.5, 0.05, dist) * smoothstep(0.3, 0.7, inject_noise);
 	prev.rgb = mix(prev.rgb, audio_color, inject_mask * audio_inject_amount);
 
-	// Noise injection
-	vec3 noise_val = texture(noise_tex, uv * 2.0 + vec2(TIME * 0.03, TIME * 0.02)).rgb;
-	float noise_mask = smoothstep(0.5, 0.1, dist);
-	prev.rgb += (noise_val - 0.5) * noise_amount * noise_mask;
+	// Noise texture injection for additional detail
+	vec3 detail_noise = texture(noise_tex, uv * 2.0 + vec2(TIME * 0.04)).rgb;
+	float detail_mask = smoothstep(0.4, 0.1, dist);
+	prev.rgb += (detail_noise - 0.5) * noise_amount * detail_mask;
 
 	COLOR = vec4(clamp(prev.rgb, 0.0, 1.0), 1.0);
 }

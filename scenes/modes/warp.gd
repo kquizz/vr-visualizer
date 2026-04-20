@@ -96,49 +96,58 @@ func _update_warp_params(data: AudioData, _delta: float) -> void:
 	var highs: float = channels[3]
 	var energy: float = data.energy
 
+	var t: float = Time.get_ticks_msec() / 1000.0
+
 	# Bass -> zoom (dramatic tunnel pull on kicks)
 	var zoom: float
 	match bass_mode:
-		0: zoom = 1.0 + bass * zoom_intensity * 1.5  # Punchy
-		1: zoom = 1.0 + bass * zoom_intensity * 0.5   # Smooth
-		2: zoom = 1.0 + bass * zoom_intensity * bass * 2.0  # Intensity-Scaled
+		0: zoom = 1.0 + bass * zoom_intensity * 1.5
+		1: zoom = 1.0 + bass * zoom_intensity * 0.5
+		2: zoom = 1.0 + bass * zoom_intensity * bass * 2.0
 		_: zoom = 1.0
 	zoom = maxf(zoom, 1.005)
 
-	# Mids -> rotation (visible swirl)
-	var rotation_val: float = 0.008 + mids * 0.08
+	# Mids -> rotation (alternating direction for variety)
+	var rot_dir: float = sign(sin(t * 0.2))
+	var rotation_val: float = rot_dir * (0.01 + mids * 0.1)
+
+	# Warp center drift — breaks circular symmetry, creates flowing motion
+	var dx: float = sin(t * 0.3) * 0.03 + cos(t * 0.17) * 0.02
+	var dy: float = cos(t * 0.23) * 0.03 + sin(t * 0.31) * 0.02
+	# Bass hits push the center
+	dx += bass * 0.02 * sin(t * 2.0)
+	dy += bass * 0.02 * cos(t * 2.0)
 
 	# Highs -> hue shift
-	var hue_val: float = 0.002 + highs * 0.008
+	var hue_val: float = 0.003 + highs * 0.01
 
 	# Decay
 	var decay_val: float
 	match decay_mode:
-		0: decay_val = 0.97   # Long trails
-		1: decay_val = 0.92   # Quick dissolve
+		0: decay_val = 0.97
+		1: decay_val = 0.92
 		2: decay_val = lerpf(0.97, 0.92, energy)
 		_: decay_val = 0.97
 
-	# Injection — stronger for vivid colors
-	var inject: float = 0.06 + energy * 0.15
+	# Injection
+	var inject: float = 0.08 + energy * 0.18
 
-	# Vivid HSV-based color from audio
 	var audio_col: Vector3 = _audio_to_vivid_color(bass, mids, highs, energy)
+	var noise_val: float = 0.02 + bass * 0.05
 
-	# Noise bursts on beats
-	var noise: float = 0.01 + bass * 0.04
-
-	# Display brightness (on dome, outside feedback loop)
+	# Display brightness
 	var dome_brightness: float = 1.5 + energy * 1.0
 	$WarpDome.material_override.set_shader_parameter("brightness", dome_brightness)
 
 	_shader_material.set_shader_parameter("warp_zoom", zoom)
 	_shader_material.set_shader_parameter("warp_rotation", rotation_val)
+	_shader_material.set_shader_parameter("warp_dx", dx)
+	_shader_material.set_shader_parameter("warp_dy", dy)
 	_shader_material.set_shader_parameter("decay", decay_val)
 	_shader_material.set_shader_parameter("hue_shift", hue_val)
 	_shader_material.set_shader_parameter("audio_inject_amount", inject)
 	_shader_material.set_shader_parameter("audio_color", audio_col)
-	_shader_material.set_shader_parameter("noise_amount", noise)
+	_shader_material.set_shader_parameter("noise_amount", noise_val)
 	_shader_material.set_shader_parameter("symmetry_enabled", symmetry_enabled)
 
 
