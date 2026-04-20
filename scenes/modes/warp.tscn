@@ -1,0 +1,84 @@
+[gd_scene load_steps=10 format=3 uid="uid://warp_mode_scene"]
+
+[ext_resource type="Script" path="res://scenes/modes/warp.gd" id="warp_script"]
+[ext_resource type="Shader" path="res://shaders/warp_feedback.gdshader" id="warp_feedback_shader"]
+[ext_resource type="Shader" path="res://shaders/warp_display.gdshader" id="warp_display_shader"]
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_1"]
+noise_type = 0
+frequency = 0.02
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_1"]
+noise = SubResource("FastNoiseLite_1")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_feedback"]
+shader = ExtResource("warp_feedback_shader")
+shader_parameter/warp_zoom = 1.0
+shader_parameter/warp_rotation = 0.0
+shader_parameter/warp_dx = 0.0
+shader_parameter/warp_dy = 0.0
+shader_parameter/decay = 0.97
+shader_parameter/hue_shift = 0.0
+shader_parameter/brightness = 1.0
+shader_parameter/master_intensity = 1.0
+shader_parameter/noise_amount = 0.0
+shader_parameter/audio_inject_amount = 0.1
+shader_parameter/audio_color = Vector3(1.0, 0.3, 0.1)
+shader_parameter/symmetry_enabled = true
+shader_parameter/noise_tex = SubResource("NoiseTexture2D_1")
+
+[sub_resource type="SphereMesh" id="SphereMesh_dome"]
+radius = 6.0
+height = 12.0
+radial_segments = 64
+rings = 32
+flip_faces = true
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_display"]
+shader = ExtResource("warp_display_shader")
+
+[sub_resource type="PlaceholderTexture2D" id="PlaceholderTexture2D_1"]
+
+[node name="WarpMode" type="Node3D"]
+script = ExtResource("warp_script")
+
+[node name="PingPongSystem" type="Node2D" parent="."]
+
+[node name="SubViewportA" type="SubViewport" parent="PingPongSystem"]
+own_world_3d = true
+disable_3d = true
+transparent_bg = false
+size = Vector2i(1024, 1024)
+render_target_update_mode = 3
+
+[node name="ColorRect" type="ColorRect" parent="PingPongSystem/SubViewportA"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = 1024.0
+offset_bottom = 1024.0
+grow_horizontal = 2
+grow_vertical = 2
+material = SubResource("ShaderMaterial_feedback")
+
+[node name="SubViewportB" type="SubViewport" parent="PingPongSystem"]
+own_world_3d = true
+disable_3d = true
+transparent_bg = false
+size = Vector2i(1024, 1024)
+render_target_update_mode = 3
+
+[node name="CopySprite" type="Sprite2D" parent="PingPongSystem/SubViewportB"]
+centered = false
+position = Vector2(0, 0)
+texture = SubResource("PlaceholderTexture2D_1")
+
+[node name="WarpDome" type="MeshInstance3D" parent="."]
+position = Vector3(0, 0, 0)
+mesh = SubResource("SphereMesh_dome")
+material_override = SubResource("ShaderMaterial_display")
+
+[node name="ResetTimer" type="Timer" parent="."]
+wait_time = 45.0
+one_shot = false
+autostart = true
