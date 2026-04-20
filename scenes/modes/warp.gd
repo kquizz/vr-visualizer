@@ -15,63 +15,47 @@ extends Node3D
 @export var symmetry_enabled: bool = false
 
 var _shader_material: ShaderMaterial
-var _copy_material: ShaderMaterial
-## Frames since startup -- used to seed the feedback loop
+var _prev_frame_tex: ImageTexture
+var _viewport: SubViewport
+## Frames since startup
 var _frame_count: int = 0
-## Whether the feedback loop has been seeded with initial content
 var _seeded: bool = false
-## Whether textures have been wired up
-var _textures_ready: bool = false
-
-# Copy shader source -- simple passthrough to copy SubViewportA into SubViewportB
-const COPY_SHADER_CODE := "shader_type canvas_item;
-uniform sampler2D source_texture : filter_linear;
-void fragment() {
-	COLOR = texture(source_texture, UV);
-}"
 
 
 func _ready() -> void:
-	_shader_material = $FeedbackSystem/SubViewportA/ColorRect.material
+	_viewport = $FeedbackViewport
+	_shader_material = $FeedbackViewport/ColorRect.material
 	$ResetTimer.timeout.connect(_on_reset_timer_timeout)
 	$ResetTimer.wait_time = reset_interval
 
-	# Create copy shader for SubViewportB's CopyRect
-	var copy_shader := Shader.new()
-	copy_shader.code = COPY_SHADER_CODE
-	_copy_material = ShaderMaterial.new()
-	_copy_material.shader = copy_shader
-	$FeedbackSystem/SubViewportB/CopyRect.material = _copy_material
+	# Create a black ImageTexture as the initial prev_frame
+	var img := Image.create(512, 512, false, Image.FORMAT_RGBA8)
+	img.fill(Color.BLACK)
+	_prev_frame_tex = ImageTexture.create_from_image(img)
+	_shader_material.set_shader_parameter("prev_frame", _prev_frame_tex)
 
-	# Wire textures after viewports have initialized
-	call_deferred("_setup_viewport_textures")
+	# Wire dome to show viewport output
+	call_deferred("_setup_dome")
+
+	# Copy viewport output back to prev_frame after each render
+	RenderingServer.frame_post_draw.connect(_copy_frame)
+	print("[Warp] Feedback loop ready (CPU frame copy, 512x512)")
 
 
-func _setup_viewport_textures() -> void:
-	var viewport_a := $FeedbackSystem/SubViewportA
-	var viewport_b := $FeedbackSystem/SubViewportB
+func _setup_dome() -> void:
+	$WarpDome.material_override.set_shader_parameter("warp_texture", _viewport.get_texture())
 
-	# Feedback: SubViewportB's texture → warp shader's prev_frame
-	_shader_material.set_shader_parameter("prev_frame", viewport_b.get_texture())
 
-	# Copy: SubViewportA's texture → CopyRect shader in SubViewportB
-	_copy_material.set_shader_parameter("source_texture", viewport_a.get_texture())
-
-	# Display: SubViewportA's texture → WarpDome
-	$WarpDome.material_override.set_shader_parameter("warp_texture", viewport_a.get_texture())
-
-	_textures_ready = true
-	print("[Warp] Textures wired: A→B copy, B→A feedback, A→dome display")
+func _copy_frame() -> void:
+	# Grab the viewport's rendered output and feed it back as prev_frame
+	var img := _viewport.get_texture().get_image()
+	if img != null:
+		_prev_frame_tex.set_image(img)
 
 
 func _process(delta: float) -> void:
-	if not _textures_ready:
-		return
-
 	_frame_count += 1
 
-	# Seed the feedback loop with strong initial content for the first ~30 frames
-	# so the ping-pong has something to warp (otherwise it starts from black)
 	if not _seeded:
 		_seed_feedback_loop()
 		if _frame_count >= 30:
@@ -91,8 +75,6 @@ func _process(delta: float) -> void:
 
 
 func _seed_feedback_loop() -> void:
-	# Inject strong colors to bootstrap the feedback loop
-	# Without this, the loop starts from black and never accumulates enough
 	_shader_material.set_shader_parameter("warp_zoom", 1.02)
 	_shader_material.set_shader_parameter("warp_rotation", 0.02)
 	_shader_material.set_shader_parameter("decay", 0.99)
@@ -118,43 +100,27 @@ func _update_warp_params(data: AudioData, _delta: float) -> void:
 	var highs: float = channels[3]
 	var energy: float = data.energy
 
-	# Bass -> zoom (more aggressive ranges for visible effect)
 	var zoom: float
 	match bass_mode:
-		0:  # Punchy
-			zoom = 1.0 + bass * zoom_intensity
-		1:  # Smooth
-			zoom = 1.0 + bass * zoom_intensity * 0.3
-		2:  # Intensity-Scaled
-			zoom = 1.0 + bass * zoom_intensity * bass
-		_:
-			zoom = 1.0
-
-	# Always apply a subtle base zoom so visuals evolve even at low energy
+		0: zoom = 1.0 + bass * zoom_intensity
+		1: zoom = 1.0 + bass * zoom_intensity * 0.3
+		2: zoom = 1.0 + bass * zoom_intensity * bass
+		_: zoom = 1.0
 	zoom = maxf(zoom, 1.005)
 
-	# Mids -> rotation (more aggressive for visible motion)
 	var rotation_val: float = 0.005 + mids * 0.05
-
-	# Highs -> hue shift + brightness (more aggressive for color variety)
 	var hue_shift: float = 0.002 + highs * 0.01
 	var brightness: float = 1.0 + highs * 0.5
 
-	# Decay mode
 	var decay_val: float
 	match decay_mode:
-		0: decay_val = 0.975  # Long trails
-		1: decay_val = 0.85   # Quick dissolve
-		2: decay_val = lerpf(0.98, 0.85, energy)  # Audio-driven
+		0: decay_val = 0.975
+		1: decay_val = 0.85
+		2: decay_val = lerpf(0.98, 0.85, energy)
 		_: decay_val = 0.975
 
-	# Master intensity: strong baseline so visuals are always vivid
 	var master: float = 0.6 + energy * 0.6
-
-	# Audio injection: much stronger so colors are vivid
 	var inject: float = 0.08 + energy * 0.25
-
-	# Audio color: map dominant band to hue
 	var audio_color: Vector3 = _frequency_to_color(bass, mids, highs)
 
 	_shader_material.set_shader_parameter("warp_zoom", zoom)
@@ -169,7 +135,6 @@ func _update_warp_params(data: AudioData, _delta: float) -> void:
 
 
 func _frequency_to_color(bass: float, mids: float, highs: float) -> Vector3:
-	# Bass = warm (red/orange), Mids = green/yellow, Highs = cool (blue/purple)
 	var r: float = bass * 0.8 + mids * 0.2
 	var g: float = mids * 0.5 + bass * 0.3
 	var b: float = highs * 0.8 + mids * 0.2
@@ -183,7 +148,6 @@ func _frequency_to_color(bass: float, mids: float, highs: float) -> Vector3:
 
 func _update_idle() -> void:
 	var t: float = Time.get_ticks_msec() / 1000.0
-	# Idle mode: still dynamic with gentle warp so the feedback loop evolves
 	_shader_material.set_shader_parameter("warp_zoom", 1.01)
 	_shader_material.set_shader_parameter("warp_rotation", 0.01 + 0.005 * sin(t * 0.3))
 	_shader_material.set_shader_parameter("decay", 0.97)
@@ -192,7 +156,6 @@ func _update_idle() -> void:
 	_shader_material.set_shader_parameter("hue_shift", 0.003)
 	_shader_material.set_shader_parameter("brightness", 1.1)
 	_shader_material.set_shader_parameter("symmetry_enabled", symmetry_enabled)
-	# Slowly cycling idle color based on time
 	var idle_color := Vector3(
 		0.5 + 0.3 * sin(t * 0.2),
 		0.3 + 0.2 * sin(t * 0.26 + 1.0),
@@ -205,7 +168,6 @@ func _on_reset_timer_timeout() -> void:
 	if not stability_reset_enabled:
 		return
 	_shader_material.set_shader_parameter("noise_amount", 0.05)
-	# Tween noise back to 0 over 2 seconds
 	var tween := create_tween()
 	tween.tween_method(
 		func(val: float) -> void: _shader_material.set_shader_parameter("noise_amount", val),
