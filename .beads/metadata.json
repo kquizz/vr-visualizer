@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "server",
+  "dolt_database": "vr_visualizer",
+  "project_id": "e10ea886-052b-427e-a5d8-5d607bc881b2"
+}
