@@ -68,11 +68,11 @@ Plans:
   2. The feedback loop runs stable for 5+ minutes without visual artifacts (no grid patterns, no precision drift)
   3. Switching between spectrum bars and warp mode via controller works without frame drops or shader compilation stutter
   4. Both modes render correctly in VR (Quest 3 via Virtual Desktop) and in flat-screen fallback
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 04-01: TBD
-- [ ] 04-02: TBD
+- [ ] 04-01-PLAN.md — SubViewport ping-pong feedback loop, warp shaders, inverted sphere dome, audio mapping
+- [ ] 04-02-PLAN.md — ModeManager warp registration, fade-to-black transition, keyboard toggle, visual verification
 
 ## Progress
 
@@ -83,4 +83,4 @@ Phases execute in numeric order: 2 -> 3 -> 4
 |-------|----------------|--------|-----------|
 | 2. Audio Capture Refactor | 2/2 | Complete   | 2026-04-20 |
 | 3. Spectrum Bars + Mode System | 0/2 | In progress | - |
-| 4. Milkdrop Warp Mode | 0/? | Not started | - |
+| 4. Milkdrop Warp Mode | 0/2 | Not started | - |
