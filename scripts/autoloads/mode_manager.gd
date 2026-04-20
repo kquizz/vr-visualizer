@@ -18,7 +18,7 @@ func _ready() -> void:
 
 func _initialize() -> void:
 	register_mode("spectrum_bars", "res://scenes/modes/spectrum_bars.tscn")
-	register_mode("warp", "res://scenes/modes/warp.tscn")
+	register_mode("warp", "res://scenes/modes/milkdrop.tscn")
 
 func register_mode(mode_name: String, scene_path: String) -> void:
 	_modes[mode_name] = scene_path
