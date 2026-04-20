@@ -83,10 +83,11 @@ func _seed_feedback_loop() -> void:
 	_shader_material.set_shader_parameter("noise_amount", 0.04)
 	_shader_material.set_shader_parameter("hue_shift", 0.008)
 	_shader_material.set_shader_parameter("symmetry_enabled", false)
-	# Cycle through vivid saturated hues during seed
 	var hue: float = fmod(_frame_count * 0.03, 1.0)
 	var c := Color.from_hsv(hue, 0.9, 1.0)
-	_shader_material.set_shader_parameter("audio_color", Vector3(c.r, c.g, c.b))
+	_shader_material.set_shader_parameter("color_inner", Vector3(c.r, c.g, c.b))
+	var c2 := Color.from_hsv(fmod(hue + 0.45, 1.0), 0.9, 0.9)
+	_shader_material.set_shader_parameter("color_outer", Vector3(c2.r, c2.g, c2.b))
 
 
 func _update_warp_params(data: AudioData, _delta: float) -> void:
@@ -132,11 +133,16 @@ func _update_warp_params(data: AudioData, _delta: float) -> void:
 	# Injection
 	var inject: float = 0.08 + energy * 0.18
 
-	var audio_col: Vector3 = _audio_to_vivid_color(bass, mids, highs, energy)
-	var noise_val: float = 0.02 + bass * 0.05
+	# Inner color: bass-driven warm tones
+	var inner_col: Vector3 = _audio_to_vivid_color(bass, mids, highs, energy)
+	# Outer color: complementary/cool — offset hue by ~0.45
+	var outer_hue: float = fmod(_get_hue(bass, mids, highs) + 0.45, 1.0)
+	var oc := Color.from_hsv(outer_hue, 0.85, 0.8 + energy * 0.2)
+	var outer_col := Vector3(oc.r, oc.g, oc.b)
 
-	# Display brightness
-	var dome_brightness: float = 1.5 + energy * 1.0
+	var noise_val: float = 0.02 + bass * 0.06
+
+	var dome_brightness: float = 1.5 + energy * 1.2
 	$WarpDome.material_override.set_shader_parameter("brightness", dome_brightness)
 
 	_shader_material.set_shader_parameter("warp_zoom", zoom)
@@ -146,29 +152,27 @@ func _update_warp_params(data: AudioData, _delta: float) -> void:
 	_shader_material.set_shader_parameter("decay", decay_val)
 	_shader_material.set_shader_parameter("hue_shift", hue_val)
 	_shader_material.set_shader_parameter("audio_inject_amount", inject)
-	_shader_material.set_shader_parameter("audio_color", audio_col)
+	_shader_material.set_shader_parameter("color_inner", inner_col)
+	_shader_material.set_shader_parameter("color_outer", outer_col)
 	_shader_material.set_shader_parameter("noise_amount", noise_val)
 	_shader_material.set_shader_parameter("symmetry_enabled", symmetry_enabled)
 
 
-func _audio_to_vivid_color(bass: float, mids: float, highs: float, energy: float) -> Vector3:
-	# Map dominant frequency band to hue — always fully saturated and bright
-	# Bass = warm (red/orange 0.0-0.1), Mids = green/cyan (0.25-0.5), Highs = blue/purple (0.6-0.85)
-	var hue: float
+func _get_hue(bass: float, mids: float, highs: float) -> float:
 	var max_band := maxf(bass, maxf(mids, highs))
 	if max_band < 0.01:
-		hue = fmod(Time.get_ticks_msec() / 5000.0, 1.0)  # Slow rainbow when silent
+		return fmod(Time.get_ticks_msec() / 5000.0, 1.0)
 	elif bass >= mids and bass >= highs:
-		hue = lerpf(0.0, 0.1, mids / maxf(bass, 0.01))  # Red → orange
+		return lerpf(0.0, 0.1, mids / maxf(bass, 0.01))
 	elif mids >= bass and mids >= highs:
-		hue = lerpf(0.25, 0.5, highs / maxf(mids, 0.01))  # Green → cyan
+		return lerpf(0.25, 0.5, highs / maxf(mids, 0.01))
 	else:
-		hue = lerpf(0.6, 0.85, bass / maxf(highs, 0.01))  # Blue → purple
+		return lerpf(0.6, 0.85, bass / maxf(highs, 0.01))
 
-	var saturation: float = 0.8 + energy * 0.2  # Always vivid
-	var value: float = 0.9 + energy * 0.1
 
-	var c := Color.from_hsv(hue, saturation, value)
+func _audio_to_vivid_color(bass: float, mids: float, highs: float, energy: float) -> Vector3:
+	var hue := _get_hue(bass, mids, highs)
+	var c := Color.from_hsv(hue, 0.85 + energy * 0.15, 0.9 + energy * 0.1)
 	return Vector3(c.r, c.g, c.b)
 
 
@@ -184,7 +188,9 @@ func _update_idle() -> void:
 	# Slow rainbow cycle when idle
 	var hue: float = fmod(t * 0.05, 1.0)
 	var c := Color.from_hsv(hue, 0.85, 0.9)
-	_shader_material.set_shader_parameter("audio_color", Vector3(c.r, c.g, c.b))
+	_shader_material.set_shader_parameter("color_inner", Vector3(c.r, c.g, c.b))
+	var c2 := Color.from_hsv(fmod(hue + 0.45, 1.0), 0.8, 0.8)
+	_shader_material.set_shader_parameter("color_outer", Vector3(c2.r, c2.g, c2.b))
 	$WarpDome.material_override.set_shader_parameter("brightness", 1.8)
 
 
