@@ -4,20 +4,20 @@ shader_type canvas_item;
 uniform sampler2D prev_frame : filter_linear;
 
 // Audio-driven warp parameters (set from GDScript)
-uniform float warp_zoom : hint_range(0.9, 1.2) = 1.0;
-uniform float warp_rotation : hint_range(-0.1, 0.1) = 0.0;
-uniform float warp_dx : hint_range(-0.02, 0.02) = 0.0;
-uniform float warp_dy : hint_range(-0.02, 0.02) = 0.0;
-uniform float decay : hint_range(0.8, 1.0) = 0.97;
+uniform float warp_zoom : hint_range(0.9, 1.3) = 1.0;
+uniform float warp_rotation : hint_range(-0.2, 0.2) = 0.0;
+uniform float warp_dx : hint_range(-0.05, 0.05) = 0.0;
+uniform float warp_dy : hint_range(-0.05, 0.05) = 0.0;
+uniform float decay : hint_range(0.85, 1.0) = 0.97;
 uniform float hue_shift : hint_range(0.0, 0.05) = 0.0;
 
 // Noise injection
 uniform sampler2D noise_tex : filter_linear;
-uniform float noise_amount : hint_range(0.0, 0.1) = 0.0;
+uniform float noise_amount : hint_range(0.0, 0.15) = 0.0;
 
-// Audio color injection (center-weighted, not uniform)
+// Audio color injection
 uniform vec3 audio_color = vec3(1.0, 0.3, 0.1);
-uniform float audio_inject_amount : hint_range(0.0, 0.5) = 0.1;
+uniform float audio_inject_amount : hint_range(0.0, 1.0) = 0.1;
 
 // Symmetry
 uniform bool symmetry_enabled = false;
@@ -49,43 +49,48 @@ void fragment() {
 		uv = vec2(cos(angle), sin(angle)) * radius + 0.5;
 	}
 
-	// UV warp: polar coordinate transform
+	// UV warp: polar coordinate transform from center
 	vec2 center = vec2(0.5);
 	vec2 delta = uv - center;
 	float r = length(delta);
 	float a = atan(delta.y, delta.x);
 
-	// Apply warp
+	// Apply warp — zoom pulls toward center, rotation swirls
 	r /= warp_zoom;
 	a += warp_rotation;
+	// Slight radial-dependent rotation for spiral effect
+	a += r * warp_rotation * 0.5;
 	delta = vec2(cos(a), sin(a)) * r;
 	vec2 warped_uv = delta + center + vec2(warp_dx, warp_dy);
 
-	// Sample previous frame (clamp to avoid edge bleed)
+	// Sample previous frame
 	vec2 clamped_uv = clamp(warped_uv, vec2(0.002), vec2(0.998));
 	vec4 prev = texture(prev_frame, clamped_uv);
 
-	// Decay — energy-conserving, always removes some each frame
+	// Decay
 	prev.rgb *= decay;
 
-	// Hue shift only (NO brightness multiply — that would amplify inside the loop)
-	if (hue_shift > 0.0001) {
-		vec3 hsv = rgb2hsv(max(prev.rgb, vec3(0.0)));
+	// Hue shift (skip when near zero to avoid HSV artifacts on black)
+	if (hue_shift > 0.0001 && length(prev.rgb) > 0.01) {
+		vec3 hsv = rgb2hsv(prev.rgb);
 		hsv.x = fract(hsv.x + hue_shift);
+		// Boost saturation slightly to keep colors vivid through the loop
+		hsv.y = min(hsv.y * 1.05, 1.0);
 		prev.rgb = hsv2rgb(hsv);
 	}
 
-	// Audio color injection — CENTER-WEIGHTED like Milkdrop
-	// Inject color at the center; warp spreads it outward over frames.
-	// Edges only get decayed/warped content from previous frames.
+	// Audio color injection — center-weighted ring pattern
+	// Creates a bright ring that warp pulls inward, more interesting than a blob
 	float dist = length(UV - vec2(0.5));
-	float inject_mask = smoothstep(0.5, 0.05, dist);
+	float ring = smoothstep(0.25, 0.15, dist) * smoothstep(0.0, 0.08, dist);
+	float blob = smoothstep(0.45, 0.05, dist);
+	float inject_mask = max(ring * 0.7, blob * 0.4);
 	prev.rgb = mix(prev.rgb, audio_color, inject_mask * audio_inject_amount);
 
-	// Noise injection (periodic bursts, controlled by GDScript)
-	vec3 noise_val = texture(noise_tex, uv + vec2(TIME * 0.01)).rgb;
-	float noise_mask = smoothstep(0.5, 0.15, dist);
-	prev.rgb += noise_val * noise_amount * noise_mask;
+	// Noise injection
+	vec3 noise_val = texture(noise_tex, uv * 2.0 + vec2(TIME * 0.03, TIME * 0.02)).rgb;
+	float noise_mask = smoothstep(0.5, 0.1, dist);
+	prev.rgb += (noise_val - 0.5) * noise_amount * noise_mask;
 
 	COLOR = vec4(clamp(prev.rgb, 0.0, 1.0), 1.0);
 }

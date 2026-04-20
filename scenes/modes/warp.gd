@@ -29,7 +29,7 @@ func _ready() -> void:
 	$ResetTimer.wait_time = reset_interval
 
 	# Create a black ImageTexture as the initial prev_frame
-	var img := Image.create(512, 512, false, Image.FORMAT_RGBA8)
+	var img := Image.create(768, 768, false, Image.FORMAT_RGBA8)
 	img.fill(Color.BLACK)
 	_prev_frame_tex = ImageTexture.create_from_image(img)
 	_shader_material.set_shader_parameter("prev_frame", _prev_frame_tex)
@@ -39,7 +39,7 @@ func _ready() -> void:
 
 	# Copy viewport output back to prev_frame after each render
 	RenderingServer.frame_post_draw.connect(_copy_frame)
-	print("[Warp] Feedback loop ready (CPU frame copy, 512x512)")
+	print("[Warp] Feedback loop ready (CPU frame copy, 768x768)")
 
 
 func _setup_dome() -> void:
@@ -75,22 +75,18 @@ func _process(delta: float) -> void:
 
 
 func _seed_feedback_loop() -> void:
-	# Seed phase: inject vivid colors at the center to bootstrap the feedback loop.
-	# Warp spreads the center injection outward over subsequent frames.
-	_shader_material.set_shader_parameter("warp_zoom", 1.02)
-	_shader_material.set_shader_parameter("warp_rotation", 0.02)
+	# Seed: inject bright saturated colors to bootstrap the feedback loop
+	_shader_material.set_shader_parameter("warp_zoom", 1.03)
+	_shader_material.set_shader_parameter("warp_rotation", 0.03)
 	_shader_material.set_shader_parameter("decay", 0.98)
-	_shader_material.set_shader_parameter("audio_inject_amount", 0.3)
-	_shader_material.set_shader_parameter("noise_amount", 0.03)
-	_shader_material.set_shader_parameter("hue_shift", 0.005)
+	_shader_material.set_shader_parameter("audio_inject_amount", 0.25)
+	_shader_material.set_shader_parameter("noise_amount", 0.04)
+	_shader_material.set_shader_parameter("hue_shift", 0.008)
 	_shader_material.set_shader_parameter("symmetry_enabled", false)
-	var t: float = _frame_count * 0.1
-	var seed_color := Vector3(
-		0.6 + 0.4 * sin(t),
-		0.4 + 0.4 * sin(t * 1.3 + 1.0),
-		0.5 + 0.4 * sin(t * 0.7 + 2.0)
-	)
-	_shader_material.set_shader_parameter("audio_color", seed_color)
+	# Cycle through vivid saturated hues during seed
+	var hue: float = fmod(_frame_count * 0.03, 1.0)
+	var c := Color.from_hsv(hue, 0.9, 1.0)
+	_shader_material.set_shader_parameter("audio_color", Vector3(c.r, c.g, c.b))
 
 
 func _update_warp_params(data: AudioData, _delta: float) -> void:
@@ -100,38 +96,40 @@ func _update_warp_params(data: AudioData, _delta: float) -> void:
 	var highs: float = channels[3]
 	var energy: float = data.energy
 
-	# Bass -> zoom
+	# Bass -> zoom (dramatic tunnel pull on kicks)
 	var zoom: float
 	match bass_mode:
-		0: zoom = 1.0 + bass * zoom_intensity
-		1: zoom = 1.0 + bass * zoom_intensity * 0.3
-		2: zoom = 1.0 + bass * zoom_intensity * bass
+		0: zoom = 1.0 + bass * zoom_intensity * 1.5  # Punchy
+		1: zoom = 1.0 + bass * zoom_intensity * 0.5   # Smooth
+		2: zoom = 1.0 + bass * zoom_intensity * bass * 2.0  # Intensity-Scaled
 		_: zoom = 1.0
-	zoom = maxf(zoom, 1.003)
+	zoom = maxf(zoom, 1.005)
 
-	# Mids -> rotation
-	var rotation_val: float = 0.003 + mids * 0.04
+	# Mids -> rotation (visible swirl)
+	var rotation_val: float = 0.008 + mids * 0.08
 
-	# Highs -> hue shift (small values — this runs every frame in the loop)
-	var hue_val: float = 0.001 + highs * 0.005
+	# Highs -> hue shift
+	var hue_val: float = 0.002 + highs * 0.008
 
-	# Decay: controls how fast trails fade. Must dominate over injection.
+	# Decay
 	var decay_val: float
 	match decay_mode:
 		0: decay_val = 0.97   # Long trails
-		1: decay_val = 0.90   # Quick dissolve
-		2: decay_val = lerpf(0.97, 0.90, energy)  # Audio-driven
+		1: decay_val = 0.92   # Quick dissolve
+		2: decay_val = lerpf(0.97, 0.92, energy)
 		_: decay_val = 0.97
 
-	# Injection: center-weighted blend toward audio_color.
-	# Keep low — steady-state brightness ≈ inject / (1 - decay).
-	# At inject=0.08, decay=0.97: steady state ≈ 0.08/0.03 ≈ 2.7 → clamps but only at center
-	var inject: float = 0.03 + energy * 0.08
+	# Injection — stronger for vivid colors
+	var inject: float = 0.06 + energy * 0.15
 
-	var audio_col: Vector3 = _frequency_to_color(bass, mids, highs)
+	# Vivid HSV-based color from audio
+	var audio_col: Vector3 = _audio_to_vivid_color(bass, mids, highs, energy)
+
+	# Noise bursts on beats
+	var noise: float = 0.01 + bass * 0.04
 
 	# Display brightness (on dome, outside feedback loop)
-	var dome_brightness: float = 1.2 + energy * 0.8
+	var dome_brightness: float = 1.5 + energy * 1.0
 	$WarpDome.material_override.set_shader_parameter("brightness", dome_brightness)
 
 	_shader_material.set_shader_parameter("warp_zoom", zoom)
@@ -140,36 +138,45 @@ func _update_warp_params(data: AudioData, _delta: float) -> void:
 	_shader_material.set_shader_parameter("hue_shift", hue_val)
 	_shader_material.set_shader_parameter("audio_inject_amount", inject)
 	_shader_material.set_shader_parameter("audio_color", audio_col)
+	_shader_material.set_shader_parameter("noise_amount", noise)
 	_shader_material.set_shader_parameter("symmetry_enabled", symmetry_enabled)
 
 
-func _frequency_to_color(bass: float, mids: float, highs: float) -> Vector3:
-	var r: float = bass * 0.8 + mids * 0.2
-	var g: float = mids * 0.5 + bass * 0.3
-	var b: float = highs * 0.8 + mids * 0.2
-	var color := Vector3(r, g, b)
-	if color.length() > 0.001:
-		color = color.normalized()
+func _audio_to_vivid_color(bass: float, mids: float, highs: float, energy: float) -> Vector3:
+	# Map dominant frequency band to hue — always fully saturated and bright
+	# Bass = warm (red/orange 0.0-0.1), Mids = green/cyan (0.25-0.5), Highs = blue/purple (0.6-0.85)
+	var hue: float
+	var max_band := maxf(bass, maxf(mids, highs))
+	if max_band < 0.01:
+		hue = fmod(Time.get_ticks_msec() / 5000.0, 1.0)  # Slow rainbow when silent
+	elif bass >= mids and bass >= highs:
+		hue = lerpf(0.0, 0.1, mids / maxf(bass, 0.01))  # Red → orange
+	elif mids >= bass and mids >= highs:
+		hue = lerpf(0.25, 0.5, highs / maxf(mids, 0.01))  # Green → cyan
 	else:
-		color = Vector3(0.6, 0.3, 0.2)
-	return color
+		hue = lerpf(0.6, 0.85, bass / maxf(highs, 0.01))  # Blue → purple
+
+	var saturation: float = 0.8 + energy * 0.2  # Always vivid
+	var value: float = 0.9 + energy * 0.1
+
+	var c := Color.from_hsv(hue, saturation, value)
+	return Vector3(c.r, c.g, c.b)
 
 
 func _update_idle() -> void:
 	var t: float = Time.get_ticks_msec() / 1000.0
-	_shader_material.set_shader_parameter("warp_zoom", 1.008)
-	_shader_material.set_shader_parameter("warp_rotation", 0.008 + 0.004 * sin(t * 0.3))
+	_shader_material.set_shader_parameter("warp_zoom", 1.01)
+	_shader_material.set_shader_parameter("warp_rotation", 0.015 + 0.008 * sin(t * 0.3))
 	_shader_material.set_shader_parameter("decay", 0.97)
-	_shader_material.set_shader_parameter("audio_inject_amount", 0.04)
-	_shader_material.set_shader_parameter("hue_shift", 0.002)
+	_shader_material.set_shader_parameter("audio_inject_amount", 0.06)
+	_shader_material.set_shader_parameter("noise_amount", 0.02)
+	_shader_material.set_shader_parameter("hue_shift", 0.003)
 	_shader_material.set_shader_parameter("symmetry_enabled", symmetry_enabled)
-	var idle_color := Vector3(
-		0.5 + 0.3 * sin(t * 0.2),
-		0.3 + 0.2 * sin(t * 0.26 + 1.0),
-		0.4 + 0.3 * sin(t * 0.34 + 2.0)
-	)
-	_shader_material.set_shader_parameter("audio_color", idle_color)
-	$WarpDome.material_override.set_shader_parameter("brightness", 1.5)
+	# Slow rainbow cycle when idle
+	var hue: float = fmod(t * 0.05, 1.0)
+	var c := Color.from_hsv(hue, 0.85, 0.9)
+	_shader_material.set_shader_parameter("audio_color", Vector3(c.r, c.g, c.b))
+	$WarpDome.material_override.set_shader_parameter("brightness", 1.8)
 
 
 func _on_reset_timer_timeout() -> void:
