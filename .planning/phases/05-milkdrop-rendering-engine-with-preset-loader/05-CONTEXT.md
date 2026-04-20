@@ -1,60 +1,56 @@
 # Phase 5: Milkdrop Rendering Engine with Preset Loader - Context
 
 **Gathered:** 2026-04-20
-**Status:** Ready for planning
+**Status:** Ready for planning (REVISED — pivoted from GDScript reimplementation to projectM integration)
 
 <domain>
 ## Phase Boundary
 
-A proper Milkdrop rendering engine that replaces Phase 4's basic warp mode. Implements Milkdrop's actual rendering architecture (grid mesh warp, NSEEL equation interpreter, waveform overlays, blur pipeline) and can load real .milk preset files. Displayed on the VR inverted sphere dome. Registered as the "warp" mode in ModeManager, replacing the Phase 4 implementation.
+Integrate the projectM library (open-source Milkdrop reimplementation in C++) as a Godot GDExtension to get full Milkdrop preset compatibility. projectM handles all rendering (NSEEL interpreter, grid warp, waveforms, blur, compositing). We write a thin GDExtension wrapper that feeds it audio data and gets a rendered texture back, displayed on the VR inverted sphere dome. Replaces Phase 4's basic warp mode.
 
 </domain>
 
 <decisions>
 ## Implementation Decisions
 
+### Architecture: projectM as GDExtension
+- Use projectM (https://github.com/projectM-visualizer/projectm) — a mature C++ library that reimplements Milkdrop with full preset compatibility
+- Compile projectM as a Godot GDExtension (C++ plugin) using godot-cpp bindings
+- projectM renders each frame to an OpenGL texture → we transfer that texture to Godot for display on the dome
+- This replaces the previous plan to reimplement NSEEL, warp, waveforms, and blur in GDScript — 10x less work, better performance, full compatibility
+
 ### Preset Compatibility
-- Build a full NSEEL (Nullsoft Expression Evaluator Library) interpreter in GDScript to evaluate .milk preset equations at runtime
-- Can load any standard .milk preset file directly — no conversion step needed
-- Start with 5 test presets to prove the engine works; curated preset packs come later
+- Full .milk preset compatibility via projectM (it already handles NSEEL, all waveform types, blur, video echo, compositing)
+- Start with 5 test presets bundled in `res://presets/`
 - Manual preset selection only (no auto-cycling for now)
-- Unsupported features are skipped gracefully — preset still renders, just missing some effects
-- Presets loaded from a `res://presets/` directory (or user-accessible folder)
+- Unsupported features handled by projectM gracefully
 
-### Rendering Pipeline
-- **Grid mesh warp (core):** 128x96 vertex grid with dynamic UV coordinates computed per-frame from preset per-pixel equations. This is the heart of the Milkdrop look
-- **GPU ping-pong feedback:** Two SubViewports at 2048x2048, swap each frame using get_texture(). Phase 4's CPU copy was a workaround for a shader bug, not a GPU limitation
-- **Waveform overlay drawing:** All four types — circular waveform, spectrum/frequency bars, oscilloscope lines, and custom preset-defined shapes. Drawn as mesh geometry on top of the feedback each frame
-- **Multi-level Gaussian blur:** Separable blur passes for glow/soft look. Up to 3-4 levels initially
-- **Video echo deferred:** Not in MVP. Can add in a follow-up phase if needed
-- **Composite shaders deferred:** Not in MVP. Core warp + waveforms + blur is the target
-
-### Waveform Drawing
-- Match Milkdrop's blending modes: additive blend for bright glowing lines, alpha blend for softer shapes — follow preset's blend mode flags
-- Waveforms are generated as mesh geometry each frame from audio data, rendered on top of the feedback SubViewport
-- Custom shapes support per-frame equations from presets (for full preset compatibility)
+### Audio Bridge
+- projectM expects PCM audio samples (typically 512-2048 samples per frame)
+- Need to capture raw PCM from Godot's AudioServer (AudioEffectCapture on the capture bus)
+- Feed PCM data to projectM via its API each frame
+- projectM handles its own FFT analysis internally — we just give it raw audio
 
 ### VR Presentation
 - Replace Phase 4 warp mode entirely — remove old warp.gd/warp.tscn/warp_feedback.gdshader
 - Keep inverted sphere dome (radius 6m, flip_faces) centered at camera height
 - Two modes total: spectrum bars + milkdrop
 - Same fade-to-black transition on TAB key switch
-- Milkdrop output texture mapped to dome interior
+- projectM rendered texture mapped to dome interior via display shader
 
-### Audio Integration
-- Milkdrop presets expect specific audio variables: bass, bass_att, mid, mid_att, treb, treb_att, plus raw waveform data (512 samples)
-- Map our AudioManager grouped channels and FFT bands to Milkdrop's expected audio variables
-- bass = grouped[0] (LOW), mid = (grouped[1] + grouped[2]) * 0.5, treb = grouped[3] (HIGH)
-- _att variants use exponential smoothing (slower decay) — need to add these to the audio pipeline
+### GDExtension Build
+- Use godot-cpp (official C++ bindings for Godot 4.x)
+- Build system: SCons (matches Godot's build system) or CMake
+- Target platforms: macOS (development), Windows (VR/PCVR deployment)
+- The GDExtension exposes a simple GDScript API: init, set_preset, feed_audio, get_texture
 
 ### Claude's Discretion
-- NSEEL interpreter implementation details (tokenizer, parser, AST, evaluator)
-- Mesh generation approach for waveforms (ImmediateMesh, ArrayMesh, etc.)
-- Blur shader implementation (number of taps, kernel weights)
-- Preset file parsing approach (.milk files are INI-like format)
-- Grid mesh implementation (MeshInstance3D, ArrayMesh, or custom rendering)
-- Error handling for malformed presets
-- Memory management for preset resources
+- GDExtension project structure and build configuration
+- projectM API surface to expose (minimal — just what we need)
+- Texture transfer mechanism (OpenGL shared context, pixel readback, or Godot RenderingServer)
+- PCM audio capture implementation details
+- Error handling for projectM initialization failures
+- Preset file discovery and listing approach
 
 </decisions>
 
@@ -63,31 +59,33 @@ A proper Milkdrop rendering engine that replaces Phase 4's basic warp mode. Impl
 
 **Downstream agents MUST read these before planning or implementing.**
 
-### Milkdrop3 source code (rendering architecture reference)
-- `https://github.com/milkdrop2077/MilkDrop3` — Full Milkdrop3 source. Key files to study:
-  - Rendering pipeline and per-vertex warp computation
-  - NSEEL equation language (per-frame and per-pixel code)
-  - Waveform/shape drawing and blending
-  - Preset file format (.milk INI-like structure)
-  - Blur pipeline implementation
+### projectM library (the core dependency)
+- `https://github.com/projectM-visualizer/projectm` — projectM source code. Key areas:
+  - API surface (libprojectM headers — how to initialize, feed audio, render, get texture)
+  - Build system (CMake, dependencies)
+  - Preset loading API
+  - Rendering output (OpenGL texture handle)
 
-### Existing audio pipeline (data source for Milkdrop)
-- `scripts/autoloads/audio_manager.gd` — AudioManager with 7 bands + 4 grouped channels, energy, has_signal
-- `scripts/autoloads/shader_bridge.gd` — Global shader uniforms bridge
-- `scripts/audio_data.gd` — AudioData class: energy, peak_frequency, bands[7], grouped[4], has_signal
+### Godot GDExtension system
+- `https://github.com/godotengine/godot-cpp` — Official C++ bindings for Godot GDExtensions
+- Godot docs on GDExtension: initialization, registering classes, exposing methods to GDScript
+
+### Existing audio pipeline
+- `scripts/autoloads/audio_manager.gd` — AudioManager with FFT analysis, grouped channels
+- `scripts/audio_data.gd` — AudioData class
+- Godot AudioEffectCapture docs — for getting raw PCM samples
 
 ### Mode system (integration point)
 - `scripts/autoloads/mode_manager.gd` — ModeManager with register_mode/switch_to
-- `scripts/main.gd` — XR init, flat-screen fallback, TAB key toggle, ModeManager setup
+- `scripts/main.gd` — XR init, flat-screen fallback, TAB toggle
 
 ### Current warp mode (to be replaced)
-- `scenes/modes/warp.gd` — Current basic feedback loop implementation
-- `scenes/modes/warp.tscn` — Current warp scene (SubViewport + dome)
+- `scenes/modes/warp.gd` — Current basic feedback loop
+- `scenes/modes/warp.tscn` — Current warp scene
 - `shaders/warp_feedback.gdshader` — Current feedback shader
 - `shaders/warp_display.gdshader` — Current dome display shader
 
 ### Project constraints
-- `.planning/REQUIREMENTS.md` — VIS-03, VIS-04, INF-04 requirements
 - `CLAUDE.md` — Mobile renderer constraint, project architecture
 
 </canonical_refs>
@@ -96,50 +94,46 @@ A proper Milkdrop rendering engine that replaces Phase 4's basic warp mode. Impl
 ## Existing Code Insights
 
 ### Reusable Assets
-- `ModeManager`: Handles mode registration and switching — milkdrop registers as "warp" replacing the old implementation
-- `AudioManager.audio_data`: Provides grouped channels, FFT bands, energy, has_signal — maps to Milkdrop audio vars
-- `ShaderBridge`: Global shader uniforms — may need extension for Milkdrop-specific uniforms
-- Phase 4 dome setup: Inverted SphereMesh with display shader can be reused for the Milkdrop output
+- `ModeManager`: Mode registration/switching — milkdrop registers as "warp"
+- `AudioManager`: Provides FFT data; need to add AudioEffectCapture for raw PCM
+- Phase 4 dome: Inverted SphereMesh + display shader reusable for projectM texture output
 
 ### Established Patterns
-- Autoload singletons for managers (AudioManager, ShaderBridge, ModeManager)
+- Autoload singletons (AudioManager, ShaderBridge, ModeManager)
 - Mode scenes in `scenes/modes/` with Node3D root
 - `call_deferred("_initialize")` for safe startup
-- Mobile renderer — spatial shaders, no compute
 
 ### Integration Points
-- `ModeManager._initialize()` — update warp registration to point to new milkdrop scene
-- `scenes/modes/` — new milkdrop scene files replace old warp files
-- `scripts/` — new NSEEL interpreter, preset loader, milkdrop renderer scripts
-- `shaders/` — new grid warp shader, blur shaders, waveform shader
+- New `addons/projectm/` directory for the GDExtension
+- `AudioManager` needs AudioEffectCapture added for PCM extraction
+- `ModeManager._initialize()` — update warp registration to new milkdrop scene
+- New `scenes/modes/milkdrop.tscn` + `milkdrop.gd` replaces old warp files
 
 </code_context>
 
 <specifics>
 ## Specific Ideas
 
-- User specifically wants to load real .milk preset files from the MilkDrop community — "being able to use their presets would be insane"
-- Reference implementation: https://github.com/milkdrop2077/MilkDrop3
-- Previous REQUIREMENTS.md listed this as "out of scope" but user has explicitly upgraded it to in-scope
-- The Milkdrop3 codebase research (completed 2026-04-20) revealed the full rendering architecture — grid mesh warp with 4 oscillating sine waves, per-pixel NSEEL equations, waveform geometry overlays, multi-level blur, video echo, preset system
-- Phase 4's basic feedback loop attempt proved that simple center-injection + zoom/rotate cannot produce Milkdrop-quality visuals — the sharp geometric patterns come from waveform drawing, and the organic flow comes from per-pixel warp equations
+- User wants to load real .milk preset files — "being able to use their presets would be insane"
+- Pivoted from GDScript reimplementation to projectM integration after realizing it's 10x less work for better results
+- projectM is a mature library used by many Linux music players and Webamp (via butterchurn JS port)
+- The GDExtension wrapper should be as thin as possible — let projectM do all the heavy lifting
+- Phase 4's attempts at building a feedback loop from scratch proved the complexity of the problem
 
 </specifics>
 
 <deferred>
 ## Deferred Ideas
 
-- Auto-cycling presets with smooth crossfade — future enhancement after engine is stable
-- Curated preset packs (20-50 hand-picked presets) — after engine proves compatibility
+- Auto-cycling presets with smooth crossfade — projectM supports this natively, just needs API exposure
+- Curated preset packs (20-50 hand-picked presets) — after integration is proven
 - Full preset archive browser (~44k presets) — future quality-of-life feature
-- Video echo effect — after core pipeline is solid
-- Composite shaders from presets — after core pipeline is solid
-- Per-pixel custom shaders (bUseWarpShader, bUseCompShader) — advanced preset feature for later
 - Preset rating/favorites system — UX feature for later
+- Quest standalone (would need projectM compiled for Android/ARM)
 
 </deferred>
 
 ---
 
 *Phase: 05-milkdrop-rendering-engine-with-preset-loader*
-*Context gathered: 2026-04-20*
+*Context gathered: 2026-04-20 (revised: pivoted to projectM GDExtension approach)*
