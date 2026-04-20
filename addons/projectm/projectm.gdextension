@@ -1,0 +1,10 @@
+[configuration]
+entry_symbol = "projectm_library_init"
+compatibility_minimum = "4.2"
+reloadable = true
+
+[libraries]
+macos.debug = "res://addons/projectm/bin/libprojectm_gdext.macos.template_debug.framework"
+macos.release = "res://addons/projectm/bin/libprojectm_gdext.macos.template_release.framework"
+windows.debug.x86_64 = "res://addons/projectm/bin/libprojectm_gdext.windows.template_debug.x86_64.dll"
+windows.release.x86_64 = "res://addons/projectm/bin/libprojectm_gdext.windows.template_release.x86_64.dll"
