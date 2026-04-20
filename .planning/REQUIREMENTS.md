@@ -35,14 +35,14 @@ Requirements for FFT-First Visualizer milestone. Each maps to roadmap phases.
 
 ### Visualization
 
-- [ ] **VIS-01**: Spectrum bars mode renders spatial 3D bars in VR with one color per frequency band
-- [ ] **VIS-02**: Bar heights react in real-time to FFT magnitude data from corresponding frequency bands
+- [x] **VIS-01**: Spectrum bars mode renders spatial 3D bars in VR with one color per frequency band
+- [x] **VIS-02**: Bar heights react in real-time to FFT magnitude data from corresponding frequency bands
 - [ ] **VIS-03**: Milkdrop-style warp mode renders feedback shader with audio-driven parameters (zoom, rotation, warp, decay)
 - [ ] **VIS-04**: Warp mode creates flowing psychedelic visuals via SubViewport ping-pong frame feedback
 
 ### Infrastructure
 
-- [ ] **INF-03**: ModeManager system loads and switches between visualizer mode scenes
+- [x] **INF-03**: ModeManager system loads and switches between visualizer mode scenes
 - [ ] **INF-04**: Both modes render correctly in VR (Quest 3 via Virtual Desktop) and flat-screen fallback
 
 ## v2.x Requirements
@@ -94,9 +94,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AUD-05 | Phase 2 | Complete |
 | AUD-06 | Phase 2 | Complete |
 | AUD-07 | Phase 2 | Complete |
-| VIS-01 | Phase 3 | Pending |
-| VIS-02 | Phase 3 | Pending |
-| INF-03 | Phase 3 | Pending |
+| VIS-01 | Phase 3 | Complete |
+| VIS-02 | Phase 3 | Complete |
+| INF-03 | Phase 3 | Complete |
 | VIS-03 | Phase 4 | Pending |
 | VIS-04 | Phase 4 | Pending |
 | INF-04 | Phase 4 | Pending |
