@@ -24,7 +24,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 ### v2.0 FFT-First Visualizer
 
-- [ ] **Phase 2: Audio Capture Refactor** - BlackHole system audio capture with single-source FFT pipeline replacing stem buses
+- [x] **Phase 2: Audio Capture Refactor** - BlackHole system audio capture with single-source FFT pipeline replacing stem buses (completed 2026-04-20)
 - [ ] **Phase 3: Spectrum Bars + Mode System** - Spatial frequency bars in VR with ModeManager scene lifecycle
 - [ ] **Phase 4: Milkdrop Warp Mode** - Feedback shader visualizer with audio-driven warp, completing the two-mode experience
 
@@ -81,6 +81,6 @@ Phases execute in numeric order: 2 -> 3 -> 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 2. Audio Capture Refactor | 1/2 | In Progress|  |
+| 2. Audio Capture Refactor | 2/2 | Complete   | 2026-04-20 |
 | 3. Spectrum Bars + Mode System | 0/? | Not started | - |
 | 4. Milkdrop Warp Mode | 0/? | Not started | - |

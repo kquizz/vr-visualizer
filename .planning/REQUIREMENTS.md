@@ -30,8 +30,8 @@ Requirements for FFT-First Visualizer milestone. Each maps to roadmap phases.
 
 - [x] **AUD-04**: System audio captured via BlackHole virtual audio device into Godot
 - [x] **AUD-05**: AudioManager refactored from 4-stem buses to single capture bus with FFT analysis
-- [ ] **AUD-06**: ShaderBridge updated with frequency-band uniforms (sub-bass, bass, mids, highs) from single audio source
-- [ ] **AUD-07**: Any desktop audio source (Spotify, Tidal, Rekordbox, YouTube) visualized without app-specific integration
+- [x] **AUD-06**: ShaderBridge updated with frequency-band uniforms (sub-bass, bass, mids, highs) from single audio source
+- [x] **AUD-07**: Any desktop audio source (Spotify, Tidal, Rekordbox, YouTube) visualized without app-specific integration
 
 ### Visualization
 
@@ -92,8 +92,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | AUD-04 | Phase 2 | Complete |
 | AUD-05 | Phase 2 | Complete |
-| AUD-06 | Phase 2 | Pending |
-| AUD-07 | Phase 2 | Pending |
+| AUD-06 | Phase 2 | Complete |
+| AUD-07 | Phase 2 | Complete |
 | VIS-01 | Phase 3 | Pending |
 | VIS-02 | Phase 3 | Pending |
 | INF-03 | Phase 3 | Pending |
