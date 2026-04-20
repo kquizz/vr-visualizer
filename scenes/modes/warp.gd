@@ -15,26 +15,59 @@ extends Node3D
 @export var symmetry_enabled: bool = false
 
 var _shader_material: ShaderMaterial
+var _copy_material: ShaderMaterial
 ## Frames since startup -- used to seed the feedback loop
 var _frame_count: int = 0
 ## Whether the feedback loop has been seeded with initial content
 var _seeded: bool = false
+## Whether textures have been wired up
+var _textures_ready: bool = false
+
+# Copy shader source -- simple passthrough to copy SubViewportA into SubViewportB
+const COPY_SHADER_CODE := "shader_type canvas_item;
+uniform sampler2D source_texture : filter_linear;
+void fragment() {
+	COLOR = texture(source_texture, UV);
+}"
 
 
 func _ready() -> void:
-	_shader_material = $FeedbackViewport/SubViewportA/ColorRect.material
+	_shader_material = $FeedbackSystem/SubViewportA/ColorRect.material
 	$ResetTimer.timeout.connect(_on_reset_timer_timeout)
 	$ResetTimer.wait_time = reset_interval
-	# Wire WarpDome to read from the feedback viewport
-	call_deferred("_setup_dome_texture")
+
+	# Create copy shader for SubViewportB's CopyRect
+	var copy_shader := Shader.new()
+	copy_shader.code = COPY_SHADER_CODE
+	_copy_material = ShaderMaterial.new()
+	_copy_material.shader = copy_shader
+	$FeedbackSystem/SubViewportB/CopyRect.material = _copy_material
+
+	# Wire textures after viewports have initialized
+	call_deferred("_setup_viewport_textures")
 
 
-func _setup_dome_texture() -> void:
-	var viewport := $FeedbackViewport/SubViewportA
-	$WarpDome.material_override.set_shader_parameter("warp_texture", viewport.get_texture())
+func _setup_viewport_textures() -> void:
+	var viewport_a := $FeedbackSystem/SubViewportA
+	var viewport_b := $FeedbackSystem/SubViewportB
+
+	# Feedback: SubViewportB's texture → warp shader's prev_frame
+	_shader_material.set_shader_parameter("prev_frame", viewport_b.get_texture())
+
+	# Copy: SubViewportA's texture → CopyRect shader in SubViewportB
+	_copy_material.set_shader_parameter("source_texture", viewport_a.get_texture())
+
+	# Display: SubViewportA's texture → WarpDome
+	$WarpDome.material_override.set_shader_parameter("warp_texture", viewport_a.get_texture())
+
+	_textures_ready = true
+	print("[Warp] Textures wired: A→B copy, B→A feedback, A→dome display")
 
 
 func _process(delta: float) -> void:
+	if not _textures_ready:
+		return
+
 	_frame_count += 1
 
 	# Seed the feedback loop with strong initial content for the first ~30 frames
