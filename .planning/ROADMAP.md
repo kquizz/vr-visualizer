@@ -39,11 +39,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. AudioManager reads from a single BlackHole capture bus (not 4 stem buses) and exposes frequency-band data (sub-bass, bass, mids, highs)
   3. ShaderBridge pushes frequency-band uniforms that a test shader visibly reacts to from live system audio
   4. Switching between audio sources (Spotify, YouTube, Tidal) requires zero changes in Godot -- it just works
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 02-01: TBD
-- [ ] 02-02: TBD
+- [ ] 02-01-PLAN.md — Bus layout, AudioData, AudioManager rewrite for BlackHole capture
+- [ ] 02-02-PLAN.md — ShaderBridge, shader globals, test shader, debug overlay, legacy cleanup + verification
 
 ### Phase 3: Spectrum Bars + Mode System
 **Goal**: A spatial spectrum bars visualizer runs in VR, managed by a mode system that can load and switch between visualizer scenes
@@ -81,6 +81,6 @@ Phases execute in numeric order: 2 -> 3 -> 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 2. Audio Capture Refactor | 0/? | Not started | - |
+| 2. Audio Capture Refactor | 0/2 | Planning complete | - |
 | 3. Spectrum Bars + Mode System | 0/? | Not started | - |
 | 4. Milkdrop Warp Mode | 0/? | Not started | - |
