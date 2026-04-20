@@ -1,6 +1,6 @@
 shader_type canvas_item;
 
-// Previous frame from ping-pong buffer (SubViewportB's texture, set from GDScript)
+// Previous frame (CPU-copied ImageTexture from GDScript)
 uniform sampler2D prev_frame : filter_linear;
 
 // Audio-driven warp parameters (set from GDScript)
@@ -9,20 +9,18 @@ uniform float warp_rotation : hint_range(-0.1, 0.1) = 0.0;
 uniform float warp_dx : hint_range(-0.02, 0.02) = 0.0;
 uniform float warp_dy : hint_range(-0.02, 0.02) = 0.0;
 uniform float decay : hint_range(0.8, 1.0) = 0.97;
-uniform float hue_shift : hint_range(0.0, 1.0) = 0.0;
-uniform float brightness : hint_range(0.5, 2.0) = 1.0;
-uniform float master_intensity : hint_range(0.0, 2.0) = 1.0;
+uniform float hue_shift : hint_range(0.0, 0.05) = 0.0;
 
 // Noise injection
 uniform sampler2D noise_tex : filter_linear;
-uniform float noise_amount : hint_range(0.0, 0.2) = 0.0;
-uniform float audio_inject_amount : hint_range(0.0, 1.0) = 0.1;
+uniform float noise_amount : hint_range(0.0, 0.1) = 0.0;
 
-// Audio color injection
+// Audio color injection (center-weighted, not uniform)
 uniform vec3 audio_color = vec3(1.0, 0.3, 0.1);
+uniform float audio_inject_amount : hint_range(0.0, 0.5) = 0.1;
 
 // Symmetry
-uniform bool symmetry_enabled = true;
+uniform bool symmetry_enabled = false;
 
 vec3 rgb2hsv(vec3 c) {
 	vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
@@ -47,7 +45,6 @@ void fragment() {
 		vec2 centered = uv - 0.5;
 		float angle = atan(centered.y, centered.x);
 		float radius = length(centered);
-		// 4-fold symmetry
 		angle = mod(angle, PI / 2.0);
 		uv = vec2(cos(angle), sin(angle)) * radius + 0.5;
 	}
@@ -68,22 +65,27 @@ void fragment() {
 	vec2 clamped_uv = clamp(warped_uv, vec2(0.002), vec2(0.998));
 	vec4 prev = texture(prev_frame, clamped_uv);
 
-	// Decay (combined multiplicative + subtractive for stability)
-	prev.rgb = (prev.rgb - vec3(0.002)) * decay;
+	// Decay — energy-conserving, always removes some each frame
+	prev.rgb *= decay;
 
-	// Hue shift
-	vec3 hsv = rgb2hsv(prev.rgb);
-	hsv.x = fract(hsv.x + hue_shift);
-	hsv.z *= brightness;
-	prev.rgb = hsv2rgb(hsv);
+	// Hue shift only (NO brightness multiply — that would amplify inside the loop)
+	if (hue_shift > 0.0001) {
+		vec3 hsv = rgb2hsv(max(prev.rgb, vec3(0.0)));
+		hsv.x = fract(hsv.x + hue_shift);
+		prev.rgb = hsv2rgb(hsv);
+	}
 
-	// Audio color injection (always active, intensity varies)
-	prev.rgb += audio_color * audio_inject_amount * master_intensity;
+	// Audio color injection — CENTER-WEIGHTED like Milkdrop
+	// Inject color at the center; warp spreads it outward over frames.
+	// Edges only get decayed/warped content from previous frames.
+	float dist = length(UV - vec2(0.5));
+	float inject_mask = smoothstep(0.35, 0.0, dist);
+	prev.rgb = mix(prev.rgb, audio_color, inject_mask * audio_inject_amount);
 
-	// Noise injection (periodic, controlled by GDScript)
-	vec3 noise = texture(noise_tex, uv + vec2(TIME * 0.01)).rgb;
-	prev.rgb += noise * noise_amount;
+	// Noise injection (periodic bursts, controlled by GDScript)
+	vec3 noise_val = texture(noise_tex, uv + vec2(TIME * 0.01)).rgb;
+	float noise_mask = smoothstep(0.4, 0.1, dist);
+	prev.rgb += noise_val * noise_amount * noise_mask;
 
-	// Clamp to prevent runaway values
 	COLOR = vec4(clamp(prev.rgb, 0.0, 1.0), 1.0);
 }
