@@ -1,0 +1,23 @@
+[gd_scene load_steps=5 format=3 uid="uid://milkdrop_mode_scene"]
+
+[ext_resource type="Script" path="res://scenes/modes/milkdrop.gd" id="milkdrop_script"]
+[ext_resource type="Shader" path="res://shaders/milkdrop_display.gdshader" id="milkdrop_display_shader"]
+
+[sub_resource type="SphereMesh" id="SphereMesh_dome"]
+radius = 6.0
+height = 12.0
+radial_segments = 64
+rings = 32
+flip_faces = true
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_display"]
+shader = ExtResource("milkdrop_display_shader")
+
+[node name="MilkdropMode" type="Node3D"]
+script = ExtResource("milkdrop_script")
+
+[node name="MilkdropDome" type="MeshInstance3D" parent="."]
+position = Vector3(0, 1.7, 0)
+rotation = Vector3(0, 3.14159, 0)
+mesh = SubResource("SphereMesh_dome")
+material_override = SubResource("ShaderMaterial_display")
