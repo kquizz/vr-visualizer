@@ -15,6 +15,9 @@ The NSEEL interpreter is the largest engineering challenge. It requires a tokeni
 <user_constraints>
 ## User Constraints (from CONTEXT.md)
 
+
+> **NOTE: SUPERSEDED APPROACH.** The locked decisions below reflect the original GDScript reimplementation plan (custom NSEEL interpreter, 128x96 grid mesh, SubViewport ping-pong). This approach was superseded by the projectM GDExtension integration. See `05-CONTEXT.md` for the current approach: projectM (mature C++ library) handles all rendering, NSEEL evaluation, grid warp, waveforms, blur, and compositing. We write a thin GDExtension wrapper that feeds it audio and gets a texture back.
+
 ### Locked Decisions
 - Build a full NSEEL (Nullsoft Expression Evaluator Library) interpreter in GDScript to evaluate .milk preset equations at runtime
 - Can load any standard .milk preset file directly -- no conversion step needed
