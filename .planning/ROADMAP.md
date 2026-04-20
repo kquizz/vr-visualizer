@@ -71,7 +71,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — SubViewport ping-pong feedback loop, warp shaders, inverted sphere dome, audio mapping
+- [x] 04-01-PLAN.md — SubViewport ping-pong feedback loop, warp shaders, inverted sphere dome, audio mapping
 - [ ] 04-02-PLAN.md — ModeManager warp registration, fade-to-black transition, keyboard toggle, visual verification
 
 ## Progress
@@ -82,5 +82,5 @@ Phases execute in numeric order: 2 -> 3 -> 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 2. Audio Capture Refactor | 2/2 | Complete   | 2026-04-20 |
-| 3. Spectrum Bars + Mode System | 0/2 | In progress | - |
-| 4. Milkdrop Warp Mode | 0/2 | Not started | - |
+| 3. Spectrum Bars + Mode System | 2/2 | Complete | 2026-04-20 |
+| 4. Milkdrop Warp Mode | 1/2 | In progress | - |

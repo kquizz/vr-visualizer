@@ -38,7 +38,7 @@ Requirements for FFT-First Visualizer milestone. Each maps to roadmap phases.
 - [x] **VIS-01**: Spectrum bars mode renders spatial 3D bars in VR with one color per frequency band
 - [x] **VIS-02**: Bar heights react in real-time to FFT magnitude data from corresponding frequency bands
 - [ ] **VIS-03**: Milkdrop-style warp mode renders feedback shader with audio-driven parameters (zoom, rotation, warp, decay)
-- [ ] **VIS-04**: Warp mode creates flowing psychedelic visuals via SubViewport ping-pong frame feedback
+- [x] **VIS-04**: Warp mode creates flowing psychedelic visuals via SubViewport ping-pong frame feedback
 
 ### Infrastructure
 
@@ -98,7 +98,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VIS-02 | Phase 3 | Complete |
 | INF-03 | Phase 3 | Complete |
 | VIS-03 | Phase 4 | Pending |
-| VIS-04 | Phase 4 | Pending |
+| VIS-04 | Phase 4 | Complete |
 | INF-04 | Phase 4 | Pending |
 
 **Coverage:**
