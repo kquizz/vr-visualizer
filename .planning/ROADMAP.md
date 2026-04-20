@@ -53,11 +53,11 @@ Plans:
   1. 3D spectrum bars are visible in VR space, arranged spatially around the viewer, with distinct colors per frequency band
   2. Bar heights move in real-time tracking the music -- bass hits make bass bars jump, high-hats make high-frequency bars spike
   3. ModeManager can load the spectrum bars scene and will be able to switch to a second mode once it exists
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 03-01: TBD
-- [ ] 03-02: TBD
+- [ ] 03-01-PLAN.md — ModeManager autoload + spectrum bars scene (ring layout, colors, FFT reactivity)
+- [ ] 03-02-PLAN.md — Wire into main.gd, glow tuning, remove test mesh, visual verification checkpoint
 
 ### Phase 4: Milkdrop Warp Mode
 **Goal**: A Milkdrop-style warp feedback visualizer surrounds the viewer in VR, completing the two-mode experience with stutter-free switching
@@ -82,5 +82,5 @@ Phases execute in numeric order: 2 -> 3 -> 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 2. Audio Capture Refactor | 2/2 | Complete   | 2026-04-20 |
-| 3. Spectrum Bars + Mode System | 0/? | Not started | - |
+| 3. Spectrum Bars + Mode System | 0/2 | In progress | - |
 | 4. Milkdrop Warp Mode | 0/? | Not started | - |
