@@ -28,7 +28,23 @@ func _enable_flat_screen():
 	$VRScene/FallbackCamera3D.current = true
 	print("Flat screen camera active")
 
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_TAB:
+			_toggle_mode()
+
+func _toggle_mode() -> void:
+	var current = ModeManager.get_active_mode_name()
+	var modes = ModeManager.get_mode_names()
+	if modes.size() < 2:
+		return
+	var idx = modes.find(current)
+	var next_idx = (idx + 1) % modes.size()
+	ModeManager.switch_to(modes[next_idx])
+	print("Toggled to mode: %s" % modes[next_idx])
+
 func _setup_mode_manager() -> void:
 	var container := $VRScene/ModeContainer
 	ModeManager.set_container(container)
 	ModeManager.switch_to("spectrum_bars")
+	print("Press TAB to toggle between modes")
