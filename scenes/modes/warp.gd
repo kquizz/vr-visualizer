@@ -99,39 +99,40 @@ func _update_warp_params(data: AudioData, _delta: float) -> void:
 
 	var t: float = Time.get_ticks_msec() / 1000.0
 
-	# Bass -> zoom (dramatic tunnel pull on kicks)
+	# Zoom oscillates AROUND 1.0 — prevents static spiral attractor
+	# Bass kicks punch it outward (zoom < 1.0 = expand), then it drifts back in
+	var base_zoom: float = 1.0 + sin(t * 0.4) * 0.015  # Gentle breathing
+	var kick_zoom: float = -bass * zoom_intensity * 0.8  # Bass pushes OUT
 	var zoom: float
 	match bass_mode:
-		0: zoom = 1.0 + bass * zoom_intensity * 1.5
-		1: zoom = 1.0 + bass * zoom_intensity * 0.5
-		2: zoom = 1.0 + bass * zoom_intensity * bass * 2.0
-		_: zoom = 1.0
-	zoom = maxf(zoom, 1.005)
+		0: zoom = base_zoom + kick_zoom  # Punchy: strong outward kick
+		1: zoom = base_zoom + kick_zoom * 0.3  # Smooth
+		2: zoom = base_zoom + kick_zoom * bass  # Intensity-Scaled
+		_: zoom = base_zoom
 
-	# Mids -> rotation (alternating direction for variety)
-	var rot_dir: float = sign(sin(t * 0.2))
-	var rotation_val: float = rot_dir * (0.01 + mids * 0.1)
+	# Rotation: smooth sine wave with audio modulation, changes direction
+	var rot_base: float = sin(t * 0.15) * 0.04
+	var rotation_val: float = rot_base + mids * 0.06 * sign(rot_base)
 
-	# Warp center drift — breaks circular symmetry, creates flowing motion
-	var dx: float = sin(t * 0.3) * 0.03 + cos(t * 0.17) * 0.02
-	var dy: float = cos(t * 0.23) * 0.03 + sin(t * 0.31) * 0.02
-	# Bass hits push the center
-	dx += bass * 0.02 * sin(t * 2.0)
-	dy += bass * 0.02 * cos(t * 2.0)
+	# Warp center drift
+	var dx: float = sin(t * 0.23) * 0.04 + cos(t * 0.17) * 0.025
+	var dy: float = cos(t * 0.19) * 0.04 + sin(t * 0.29) * 0.025
+	dx += bass * 0.03 * sin(t * 1.7)
+	dy += bass * 0.03 * cos(t * 1.7)
 
 	# Highs -> hue shift
-	var hue_val: float = 0.003 + highs * 0.01
+	var hue_val: float = 0.004 + highs * 0.012
 
 	# Decay
 	var decay_val: float
 	match decay_mode:
-		0: decay_val = 0.97
-		1: decay_val = 0.92
-		2: decay_val = lerpf(0.97, 0.92, energy)
-		_: decay_val = 0.97
+		0: decay_val = 0.975
+		1: decay_val = 0.93
+		2: decay_val = lerpf(0.975, 0.93, energy)
+		_: decay_val = 0.975
 
-	# Injection
-	var inject: float = 0.08 + energy * 0.18
+	# Injection — strong enough to stay visible against the warp
+	var inject: float = 0.12 + energy * 0.2
 
 	# Inner color: bass-driven warm tones
 	var inner_col: Vector3 = _audio_to_vivid_color(bass, mids, highs, energy)

@@ -61,7 +61,7 @@ void fragment() {
 
 	r /= lz;
 	a += lr;
-	a += r * warp_rotation * 1.2;  // Strong spiral
+	a += r * warp_rotation * 0.5;  // Mild spiral
 	delta = vec2(cos(a), sin(a)) * r;
 	vec2 warped_uv = clamp(delta + warp_center, vec2(0.002), vec2(0.998));
 
