@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: FFT-First Visualizer
-status: completed
-stopped_at: Phase 5 context gathered
-last_updated: "2026-04-20T06:32:06.772Z"
-last_activity: 2026-04-20 -- Completed 04-01 warp feedback loop + inverted sphere
+status: in_progress
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-04-20T15:36:00Z"
+last_activity: 2026-04-20 -- Completed 05-01 projectM GDExtension wrapper
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 6
-  completed_plans: 5
+  total_plans: 9
+  completed_plans: 6
   percent: 83
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-16)
 
 **Core value:** Whatever music is playing on your computer comes alive around you -- frequency bands drive distinct visual layers
-**Current focus:** Phase 4 in progress -- Milkdrop Warp Mode
+**Current focus:** Phase 5 in progress -- Milkdrop Rendering Engine with Preset Loader
 
 ## Current Position
 
-Phase: 4 of 4 (Milkdrop Warp Mode) -- IN PROGRESS
-Plan: 1 of 1 in current phase (done)
-Status: Phase 4 Plan 01 complete
-Last activity: 2026-04-20 -- Completed 04-01 warp feedback loop + inverted sphere
+Phase: 5 of 5 (Milkdrop Rendering Engine with Preset Loader) -- IN PROGRESS
+Plan: 2 of 3 in current phase (next)
+Status: Phase 5 Plan 01 complete
+Last activity: 2026-04-20 -- Completed 05-01 projectM GDExtension wrapper
 
-Progress: [████████░░] 83%
+Progress: [███████░░░] 67%
 
 ## Performance Metrics
 
@@ -51,6 +51,7 @@ Progress: [████████░░] 83%
 | Phase 03 P01 | 5min | 2 tasks | 4 files |
 | Phase 03 P02 | 8min | 2 tasks | 2 files |
 | Phase 04 P01 | 2min | 2 tasks | 4 files |
+| Phase 05 P01 | 6min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -77,6 +78,9 @@ Recent decisions affecting current work:
 - [Phase 04-01]: ViewportTextures assigned via code in call_deferred to handle ModeManager dynamic instantiation
 - [Phase 04-01]: PlaceholderTexture2D for CopySprite initial texture, replaced at runtime
 - [Phase 04-01]: Idle animation with slowly cycling colors when no audio signal
+- [Phase 05-01]: Used projectM v3 C++ API instead of v4 C API (Homebrew ships v3.1.12)
+- [Phase 05-01]: Build restricted to arm64 only (Homebrew projectM is arm64-only)
+- [Phase 05-01]: GL texture readback via glGetTexImage for texture transfer to Godot
 
 ### Roadmap Evolution
 
@@ -95,6 +99,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-20T06:32:06.769Z
-Stopped at: Phase 5 context gathered
-Resume file: .planning/phases/05-milkdrop-rendering-engine-with-preset-loader/05-CONTEXT.md
+Last session: 2026-04-20T15:36:00Z
+Stopped at: Completed 05-01-PLAN.md
+Resume file: .planning/phases/05-milkdrop-rendering-engine-with-preset-loader/05-01-SUMMARY.md
