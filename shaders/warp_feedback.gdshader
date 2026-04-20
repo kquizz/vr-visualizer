@@ -15,8 +15,8 @@ uniform float master_intensity : hint_range(0.0, 2.0) = 1.0;
 
 // Noise injection
 uniform sampler2D noise_tex : filter_linear;
-uniform float noise_amount : hint_range(0.0, 0.1) = 0.0;
-uniform float audio_inject_amount : hint_range(0.0, 0.5) = 0.1;
+uniform float noise_amount : hint_range(0.0, 0.2) = 0.0;
+uniform float audio_inject_amount : hint_range(0.0, 1.0) = 0.1;
 
 // Audio color injection
 uniform vec3 audio_color = vec3(1.0, 0.3, 0.1);

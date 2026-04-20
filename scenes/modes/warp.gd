@@ -12,9 +12,13 @@ extends Node3D
 @export var reset_interval: float = 45.0
 
 @export_group("Symmetry")
-@export var symmetry_enabled: bool = true
+@export var symmetry_enabled: bool = false
 
 var _shader_material: ShaderMaterial
+## Frames since startup -- used to seed the feedback loop
+var _frame_count: int = 0
+## Whether the feedback loop has been seeded with initial content
+var _seeded: bool = false
 
 
 func _ready() -> void:
@@ -42,8 +46,19 @@ func _setup_viewport_textures() -> void:
 
 
 func _process(delta: float) -> void:
+	_frame_count += 1
+
+	# Seed the feedback loop with strong initial content for the first ~30 frames
+	# so the ping-pong has something to warp (otherwise it starts from black)
+	if not _seeded:
+		_seed_feedback_loop()
+		if _frame_count >= 30:
+			_seeded = true
+		return
+
 	var data: AudioData = AudioManager.audio_data
 	if data == null:
+		_update_idle()
 		return
 
 	if not AudioManager.has_signal:
@@ -53,14 +68,35 @@ func _process(delta: float) -> void:
 	_update_warp_params(data, delta)
 
 
-func _update_warp_params(data: AudioData, delta: float) -> void:
+func _seed_feedback_loop() -> void:
+	# Inject strong colors to bootstrap the feedback loop
+	# Without this, the loop starts from black and never accumulates enough
+	_shader_material.set_shader_parameter("warp_zoom", 1.02)
+	_shader_material.set_shader_parameter("warp_rotation", 0.02)
+	_shader_material.set_shader_parameter("decay", 0.99)
+	_shader_material.set_shader_parameter("master_intensity", 1.5)
+	_shader_material.set_shader_parameter("audio_inject_amount", 0.4)
+	_shader_material.set_shader_parameter("noise_amount", 0.08)
+	_shader_material.set_shader_parameter("hue_shift", 0.01)
+	_shader_material.set_shader_parameter("brightness", 1.2)
+	_shader_material.set_shader_parameter("symmetry_enabled", false)
+	var t: float = _frame_count * 0.1
+	var seed_color := Vector3(
+		0.6 + 0.4 * sin(t),
+		0.4 + 0.4 * sin(t * 1.3 + 1.0),
+		0.5 + 0.4 * sin(t * 0.7 + 2.0)
+	)
+	_shader_material.set_shader_parameter("audio_color", seed_color)
+
+
+func _update_warp_params(data: AudioData, _delta: float) -> void:
 	var channels = data.grouped
 	var bass: float = channels[0]
 	var mids: float = (channels[1] + channels[2]) * 0.5
 	var highs: float = channels[3]
 	var energy: float = data.energy
 
-	# Bass -> zoom
+	# Bass -> zoom (more aggressive ranges for visible effect)
 	var zoom: float
 	match bass_mode:
 		0:  # Punchy
@@ -72,12 +108,15 @@ func _update_warp_params(data: AudioData, delta: float) -> void:
 		_:
 			zoom = 1.0
 
-	# Mids -> rotation (consistent direction)
-	var rotation: float = mids * 0.03
+	# Always apply a subtle base zoom so visuals evolve even at low energy
+	zoom = maxf(zoom, 1.005)
 
-	# Highs -> hue shift + brightness
-	var hue_shift: float = highs * 0.005
-	var brightness: float = 1.0 + highs * 0.3
+	# Mids -> rotation (more aggressive for visible motion)
+	var rotation_val: float = 0.005 + mids * 0.05
+
+	# Highs -> hue shift + brightness (more aggressive for color variety)
+	var hue_shift: float = 0.002 + highs * 0.01
+	var brightness: float = 1.0 + highs * 0.5
 
 	# Decay mode
 	var decay_val: float
@@ -87,19 +126,22 @@ func _update_warp_params(data: AudioData, delta: float) -> void:
 		2: decay_val = lerpf(0.98, 0.85, energy)  # Audio-driven
 		_: decay_val = 0.975
 
-	# Master intensity (never fully zero)
-	var master: float = 0.3 + energy * 0.7
+	# Master intensity: strong baseline so visuals are always vivid
+	var master: float = 0.6 + energy * 0.6
+
+	# Audio injection: much stronger so colors are vivid
+	var inject: float = 0.08 + energy * 0.25
 
 	# Audio color: map dominant band to hue
 	var audio_color: Vector3 = _frequency_to_color(bass, mids, highs)
 
 	_shader_material.set_shader_parameter("warp_zoom", zoom)
-	_shader_material.set_shader_parameter("warp_rotation", rotation)
+	_shader_material.set_shader_parameter("warp_rotation", rotation_val)
 	_shader_material.set_shader_parameter("decay", decay_val)
 	_shader_material.set_shader_parameter("hue_shift", hue_shift)
 	_shader_material.set_shader_parameter("brightness", brightness)
 	_shader_material.set_shader_parameter("master_intensity", master)
-	_shader_material.set_shader_parameter("audio_inject_amount", energy * 0.15)
+	_shader_material.set_shader_parameter("audio_inject_amount", inject)
 	_shader_material.set_shader_parameter("audio_color", audio_color)
 	_shader_material.set_shader_parameter("symmetry_enabled", symmetry_enabled)
 
@@ -111,27 +153,28 @@ func _frequency_to_color(bass: float, mids: float, highs: float) -> Vector3:
 	var b: float = highs * 0.8 + mids * 0.2
 	var color := Vector3(r, g, b)
 	if color.length() > 0.001:
-		color = color.normalized() * 0.8
+		color = color.normalized()
 	else:
-		color = Vector3(0.5, 0.3, 0.2)
+		color = Vector3(0.6, 0.3, 0.2)
 	return color
 
 
 func _update_idle() -> void:
 	var t: float = Time.get_ticks_msec() / 1000.0
-	_shader_material.set_shader_parameter("warp_zoom", 1.0)
-	_shader_material.set_shader_parameter("warp_rotation", 0.005)
-	_shader_material.set_shader_parameter("decay", 0.975)
-	_shader_material.set_shader_parameter("master_intensity", 0.3)
-	_shader_material.set_shader_parameter("audio_inject_amount", 0.02)
-	_shader_material.set_shader_parameter("hue_shift", 0.001)
-	_shader_material.set_shader_parameter("brightness", 1.0)
+	# Idle mode: still dynamic with gentle warp so the feedback loop evolves
+	_shader_material.set_shader_parameter("warp_zoom", 1.01)
+	_shader_material.set_shader_parameter("warp_rotation", 0.01 + 0.005 * sin(t * 0.3))
+	_shader_material.set_shader_parameter("decay", 0.97)
+	_shader_material.set_shader_parameter("master_intensity", 0.8)
+	_shader_material.set_shader_parameter("audio_inject_amount", 0.08)
+	_shader_material.set_shader_parameter("hue_shift", 0.003)
+	_shader_material.set_shader_parameter("brightness", 1.1)
 	_shader_material.set_shader_parameter("symmetry_enabled", symmetry_enabled)
 	# Slowly cycling idle color based on time
 	var idle_color := Vector3(
-		0.5 + 0.3 * sin(t * 0.1),
-		0.3 + 0.2 * sin(t * 0.13 + 1.0),
-		0.4 + 0.3 * sin(t * 0.17 + 2.0)
+		0.5 + 0.3 * sin(t * 0.2),
+		0.3 + 0.2 * sin(t * 0.26 + 1.0),
+		0.4 + 0.3 * sin(t * 0.34 + 2.0)
 	)
 	_shader_material.set_shader_parameter("audio_color", idle_color)
 
