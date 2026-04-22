@@ -23,6 +23,7 @@ driver/enable_input=true
 AudioManager="*res://scripts/autoloads/audio_manager.gd"
 ShaderBridge="*res://scripts/autoloads/shader_bridge.gd"
 ModeManager="*res://scripts/autoloads/mode_manager.gd"
+PresetLibrary="*res://scripts/autoloads/preset_library.gd"
 
 [display]
 

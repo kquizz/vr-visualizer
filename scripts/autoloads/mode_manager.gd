@@ -96,6 +96,9 @@ func _do_switch(mode_name: String) -> void:
 	mode_changed.emit(mode_name)
 	print("ModeManager: switched to %s" % mode_name)
 
+func get_active_scene() -> Node:
+	return _active_mode
+
 func get_active_mode_name() -> String:
 	if _active_mode == null:
 		return ""

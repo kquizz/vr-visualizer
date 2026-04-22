@@ -31,30 +31,26 @@ func _initialize() -> void:
 	_load_default_preset()
 
 func _load_default_preset() -> void:
-	# Prefer spectacular presets with per-pixel shaders over basic test presets
+	# Prefer spectacular presets — check local and cream-of-the-crop
 	var preferred := [
-		"Geiss - Cosmic Dust 2.milk",
-		"Flexi - smashing fractals 2-0.milk",
-		"Aderrasi - Bow To Gravity.milk",
+		"res://presets/Geiss - Cosmic Dust 2.milk",
+		"res://presets/Flexi - smashing fractals 2-0.milk",
+		"res://presets/Aderrasi - Bow To Gravity.milk",
+		"res://presets/cream-of-the-crop/Fractal/flexi - Tronix.milk",
+		"res://presets/cream-of-the-crop/Hypnotic/Geiss - Hypnotic Swirl.milk",
 	]
-	for preset_name in preferred:
-		var preset_path: String = "res://presets/" + preset_name
+	for preset_path in preferred:
 		if FileAccess.file_exists(preset_path):
 			load_preset(preset_path)
 			return
-	# Fallback: first .milk file found
-	var dir := DirAccess.open("res://presets")
-	if dir == null:
-		push_warning("[Milkdrop] No presets/ directory found")
-		return
-	dir.list_dir_begin()
-	var file_name := dir.get_next()
-	while file_name != "":
-		if file_name.ends_with(".milk"):
-			var fallback_path: String = "res://presets/" + file_name
-			load_preset(fallback_path)
-			break
-		file_name = dir.get_next()
+	# Fallback: use PresetLibrary's first available preset
+	if PresetLibrary.category_names.size() > 0:
+		var cat := PresetLibrary.category_names[0]
+		var presets := PresetLibrary.get_presets_in_category(cat)
+		if presets.size() > 0:
+			load_preset(presets[0])
+			return
+	push_warning("[Milkdrop] No presets found")
 
 func load_preset(path: String) -> void:
 	if not _initialized:
