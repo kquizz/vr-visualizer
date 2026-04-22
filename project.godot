@@ -14,6 +14,10 @@ config/name="VR Music Visualizer"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.6", "Mobile")
 
+[audio]
+
+driver/enable_input=true
+
 [autoload]
 
 AudioManager="*res://scripts/autoloads/audio_manager.gd"
@@ -25,10 +29,6 @@ ModeManager="*res://scripts/autoloads/mode_manager.gd"
 window/size/viewport_width=1920
 window/size/viewport_height=1080
 window/vsync/vsync_mode=0
-
-[audio]
-
-driver/enable_input=true
 
 [rendering]
 

@@ -20,9 +20,24 @@ private:
     bool _initialized = false;
     int _width = 512;
     int _height = 512;
-    unsigned int _gl_texture_id = 0;
     Ref<ImageTexture> _texture;
     PackedByteArray _pixel_buffer;
+
+    // Platform-specific offscreen GL context
+    void *_sdl_window = nullptr;   // SDL_Window* (hidden)
+    void *_sdl_gl_context = nullptr; // SDL_GLContext
+
+    // Our own FBO for projectM to render into (hidden window backbuffer is unreliable)
+    unsigned int _fbo = 0;
+    unsigned int _fbo_color_tex = 0;
+    unsigned int _fbo_depth_rb = 0;
+    int _debug_frame = 0;
+
+    bool _create_gl_context();
+    void _destroy_gl_context();
+    void _make_gl_current();
+    bool _create_fbo();
+    void _destroy_fbo();
 
 protected:
     static void _bind_methods();

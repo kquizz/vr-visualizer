@@ -11,7 +11,6 @@ var _pm: ProjectMWrapper
 var _dome_material: ShaderMaterial
 var _initialized: bool = false
 var _current_preset_path: String = ""
-
 func _ready() -> void:
 	call_deferred("_initialize")
 
@@ -32,7 +31,18 @@ func _initialize() -> void:
 	_load_default_preset()
 
 func _load_default_preset() -> void:
-	# Look for any .milk file in res://presets/
+	# Prefer spectacular presets with per-pixel shaders over basic test presets
+	var preferred := [
+		"Geiss - Cosmic Dust 2.milk",
+		"Flexi - smashing fractals 2-0.milk",
+		"Aderrasi - Bow To Gravity.milk",
+	]
+	for preset_name in preferred:
+		var preset_path: String = "res://presets/" + preset_name
+		if FileAccess.file_exists(preset_path):
+			load_preset(preset_path)
+			return
+	# Fallback: first .milk file found
 	var dir := DirAccess.open("res://presets")
 	if dir == null:
 		push_warning("[Milkdrop] No presets/ directory found")
@@ -41,8 +51,8 @@ func _load_default_preset() -> void:
 	var file_name := dir.get_next()
 	while file_name != "":
 		if file_name.ends_with(".milk"):
-			var path := "res://presets/" + file_name
-			load_preset(path)
+			var fallback_path: String = "res://presets/" + file_name
+			load_preset(fallback_path)
 			break
 		file_name = dir.get_next()
 
@@ -63,6 +73,12 @@ func _process(_delta: float) -> void:
 	var pcm := AudioManager.get_pcm_buffer(PCM_FRAMES)
 	if pcm.size() > 0:
 		_pm.feed_audio(pcm)
+		# Debug: log audio level every 60 frames
+		if Engine.get_frames_drawn() % 60 == 0:
+			var peak := 0.0
+			for i in range(min(pcm.size(), 100)):
+				peak = max(peak, abs(pcm[i]))
+			print("[Milkdrop] Audio: %d samples, peak=%.4f" % [pcm.size(), peak])
 
 	# Render frame and update dome texture
 	_pm.render_frame()

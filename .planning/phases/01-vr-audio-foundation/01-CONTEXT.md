@@ -6,7 +6,7 @@
 <domain>
 ## Phase Boundary
 
-PCVR app running in Godot on Quest 3 via Virtual Desktop that plays 4 stem audio streams (drums, bass, vocals, other) with per-frame FFT data available to shaders. This phase proves the audio-to-shader pipeline with test stem files — live Serato integration is Phase 3.
+PCVR app running in Godot on Quest 3 via Virtual Desktop that plays 4 stem audio streams (drums, bass, vocals, other) with per-frame FFT data available to shaders. This phase proves the audio-to-shader pipeline with test stem files — live Rekordbox integration is Phase 3.
 
 </domain>
 
@@ -27,7 +27,7 @@ PCVR app running in Godot on Quest 3 via Virtual Desktop that plays 4 stem audio
 
 ### Test Audio
 - Use pre-separated stem files (OGG/WAV) for Phase 1 development
-- User wants to de-risk Serato stem routing before investing heavily in the VR pipeline (see Deferred Ideas)
+- User wants to de-risk Rekordbox stem routing before investing heavily in the VR pipeline (see Deferred Ideas)
 
 ### Claude's Discretion
 - Debug overlay design for verifying FFT data in VR
@@ -43,7 +43,7 @@ PCVR app running in Godot on Quest 3 via Virtual Desktop that plays 4 stem audio
 **Downstream agents MUST read these before planning or implementing.**
 
 ### Project specs
-- `.planning/PROJECT.md` — Vision, constraints, key decisions (PCVR via Virtual Desktop, Godot 4.6, Serato stems)
+- `.planning/PROJECT.md` — Vision, constraints, key decisions (PCVR via Virtual Desktop, Godot 4.6, Rekordbox stems)
 - `.planning/REQUIREMENTS.md` — Phase 1 requirements: AUD-01, AUD-02, AUD-03, VR-01, VR-02, VR-03, INF-01, INF-02
 - `.planning/ROADMAP.md` — Phase goals and success criteria
 
@@ -72,14 +72,14 @@ No external specs, ADRs, or design docs exist yet — requirements are fully cap
 
 - "A solar system skybox would be cool" — deep space with stars and nebulae
 - Modes should be able to be "very different" from each other — viewpoint, environment, everything. The mode system should not constrain visual variety.
-- The "holy shit" factor is the north star: DJing on Serato while someone wears the headset and is inside the live mix
+- The "holy shit" factor is the north star: DJing on Rekordbox while someone wears the headset and is inside the live mix
 
 </specifics>
 
 <deferred>
 ## Deferred Ideas
 
-- **Serato spike (PRIORITY)**: User wants to de-risk Serato stem routing before Phase 1. Confirm that Serato's 4 stem outputs can route to separate audio channels via BlackHole/Loopback on macOS. This should be addressed as a roadmap insertion before Phase 1.
+- **Rekordbox spike (PRIORITY)**: User wants to de-risk Rekordbox stem routing before Phase 1. Confirm that Rekordbox's 4 stem outputs can route to separate audio channels via BlackHole/Loopback on macOS. This should be addressed as a roadmap insertion before Phase 1.
 - Reactive skybox that pulses/shifts with music energy — decided static for Phase 1, revisit in Phase 2+
 - Forward-facing "stage" viewpoint mode — future mode variant
 

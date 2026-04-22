@@ -1,4 +1,26 @@
+# Godot
+.godot/
+*.uid
+
+# Build artifacts
+addons/projectm/.sconsign.dblite
+addons/projectm/src/*.os
+addons/projectm/godot-cpp/
+
+# macOS
+.DS_Store
+
+# Audio files (large, don't belong in repo)
+audio/*.mp3
+audio/*.mp3.import
+audio/*.wav
+audio/*.wav.import
+audio/stems/
+audio/separated/
 
 # Dolt database files (added by bd init)
 .dolt/
 *.db
+
+# Beads
+.beads/

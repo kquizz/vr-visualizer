@@ -3,10 +3,10 @@ import os
 
 env = SConscript("godot-cpp/SConstruct")
 
-# projectM include/lib paths (Homebrew on macOS)
-env.Append(CPPPATH=["/opt/homebrew/include/"])
+# projectM + SDL2 include/lib paths (Homebrew on macOS)
+env.Append(CPPPATH=["/opt/homebrew/include/", "/opt/homebrew/include/SDL2/"])
 env.Append(LIBPATH=["/opt/homebrew/lib/"])
-env.Append(LIBS=["projectM"])
+env.Append(LIBS=["projectM", "SDL2"])
 
 # macOS OpenGL framework
 if env["platform"] == "macos":

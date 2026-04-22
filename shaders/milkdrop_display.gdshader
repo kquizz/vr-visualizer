@@ -1,7 +1,7 @@
 shader_type spatial;
-render_mode unshaded, cull_back;
+render_mode unshaded, cull_disabled;
 
-uniform sampler2D milkdrop_texture : filter_linear;
+uniform sampler2D milkdrop_texture : filter_linear, repeat_enable;
 uniform float brightness : hint_range(0.5, 3.0) = 1.5;
 
 void fragment() {
