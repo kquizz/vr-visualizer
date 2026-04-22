@@ -7,8 +7,7 @@
 #include <godot_cpp/variant/packed_float32_array.hpp>
 #include <godot_cpp/variant/packed_byte_array.hpp>
 
-// Forward declare projectM (avoid exposing internals to Godot headers)
-class projectM;
+#include <projectM-4/types.h>
 
 namespace godot {
 
@@ -16,7 +15,7 @@ class ProjectMWrapper : public Node {
     GDCLASS(ProjectMWrapper, Node)
 
 private:
-    projectM *_pm = nullptr;
+    projectm_handle _pm = nullptr;
     bool _initialized = false;
     int _width = 512;
     int _height = 512;
@@ -27,7 +26,7 @@ private:
     void *_sdl_window = nullptr;   // SDL_Window* (hidden)
     void *_sdl_gl_context = nullptr; // SDL_GLContext
 
-    // Our own FBO for projectM to render into (hidden window backbuffer is unreliable)
+    // Our own FBO for projectM to render into
     unsigned int _fbo = 0;
     unsigned int _fbo_color_tex = 0;
     unsigned int _fbo_depth_rb = 0;
@@ -64,6 +63,12 @@ public:
 
     // Configuration
     void set_viewport_size(int width, int height);
+
+    // Runtime parameter control (v4 internal access)
+    bool set_param(const String &name, float value);
+    float get_param(const String &name) const;
+    bool set_q_variable(int index, float value);
+    float get_q_variable(int index) const;
 };
 
 } // namespace godot

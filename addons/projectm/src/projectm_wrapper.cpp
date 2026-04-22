@@ -1,10 +1,17 @@
 #include "projectm_wrapper.h"
+#include "projectm_param_access.h"
 
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/classes/project_settings.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
-#include <libprojectM/projectM.hpp>
+// projectM v4 C API
+#include <projectM-4/projectM.h>
+#include <projectM-4/core.h>
+#include <projectM-4/audio.h>
+#include <projectM-4/parameters.h>
+#include <projectM-4/render_opengl.h>
+#include <projectM-4/memory.h>
 
 #include <SDL2/SDL.h>
 
@@ -29,6 +36,11 @@ void ProjectMWrapper::_bind_methods() {
     ClassDB::bind_method(D_METHOD("render_frame"), &ProjectMWrapper::render_frame);
     ClassDB::bind_method(D_METHOD("get_texture"), &ProjectMWrapper::get_texture);
     ClassDB::bind_method(D_METHOD("set_viewport_size", "width", "height"), &ProjectMWrapper::set_viewport_size);
+    // v4 parameter control
+    ClassDB::bind_method(D_METHOD("set_param", "name", "value"), &ProjectMWrapper::set_param);
+    ClassDB::bind_method(D_METHOD("get_param", "name"), &ProjectMWrapper::get_param);
+    ClassDB::bind_method(D_METHOD("set_q_variable", "index", "value"), &ProjectMWrapper::set_q_variable);
+    ClassDB::bind_method(D_METHOD("get_q_variable", "index"), &ProjectMWrapper::get_q_variable);
 }
 
 ProjectMWrapper::ProjectMWrapper() {
@@ -39,8 +51,6 @@ ProjectMWrapper::~ProjectMWrapper() {
 }
 
 // --- SDL2-based offscreen GL context ---
-// Uses a hidden SDL window to get a proper GL context with a valid default
-// framebuffer (FBO 0). This matches exactly what projectMSDL does internally.
 
 bool ProjectMWrapper::_create_gl_context() {
     if (SDL_WasInit(SDL_INIT_VIDEO) == 0) {
@@ -50,7 +60,6 @@ bool ProjectMWrapper::_create_gl_context() {
         }
     }
 
-    // Request GL 3.2 Core profile (macOS promotes to 4.1)
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
@@ -62,8 +71,6 @@ bool ProjectMWrapper::_create_gl_context() {
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 
-    // Create a hidden SDL window purely for GL context creation.
-    // We render to our own FBO, not the window's backbuffer.
     SDL_Window *window = SDL_CreateWindow(
         "projectM offscreen",
         SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
@@ -117,23 +124,18 @@ void ProjectMWrapper::_make_gl_current() {
 }
 
 bool ProjectMWrapper::_create_fbo() {
-    // Create our own FBO so projectM renders into a valid surface
-    // (hidden SDL window backbuffer is 0x0 or invalid on macOS)
     glGenFramebuffers(1, &_fbo);
     glGenTextures(1, &_fbo_color_tex);
     glGenRenderbuffers(1, &_fbo_depth_rb);
 
-    // Color attachment
     glBindTexture(GL_TEXTURE_2D, _fbo_color_tex);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, _width, _height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    // Depth+stencil attachment (projectM uses depth)
     glBindRenderbuffer(GL_RENDERBUFFER, _fbo_depth_rb);
     glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, _width, _height);
 
-    // Assemble FBO
     glBindFramebuffer(GL_FRAMEBUFFER, _fbo);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _fbo_color_tex, 0);
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, _fbo_depth_rb);
@@ -174,40 +176,13 @@ bool ProjectMWrapper::initialize(int width, int height) {
     _width = width;
     _height = height;
 
-    // Step 1: Create offscreen GL context BEFORE projectM
+    // Step 1: Create offscreen GL context
     if (!_create_gl_context()) {
         ERR_PRINT("ProjectMWrapper: failed to create offscreen GL context");
         return false;
     }
 
-    // Step 2: Create projectM (now has a valid GL context)
-    projectM::Settings settings;
-    settings.windowWidth = width;
-    settings.windowHeight = height;
-    settings.meshX = 48;
-    settings.meshY = 36;
-    settings.fps = 60;
-    settings.textureSize = width;
-    settings.smoothPresetDuration = 5;
-    settings.presetDuration = 30;
-    settings.hardcutEnabled = false;
-    settings.aspectCorrection = true;
-    settings.shuffleEnabled = false;
-    settings.softCutRatingsEnabled = false;
-    settings.easterEgg = 0.0f;
-    settings.beatSensitivity = 1.0f;
-
-    // projectM needs datadir for fonts/textures and presetURL for preset search
-    settings.datadir = "/opt/homebrew/share/projectM";
-    settings.presetURL = "/opt/homebrew/share/projectM/presets";
-    settings.titleFontURL = "/opt/homebrew/share/projectM/fonts/Vera.ttf";
-    settings.menuFontURL = "/opt/homebrew/share/projectM/fonts/VeraMono.ttf";
-
-    UtilityFunctions::print("ProjectMWrapper: datadir = ", settings.datadir.c_str());
-    UtilityFunctions::print("ProjectMWrapper: presetURL = ", settings.presetURL.c_str());
-
-    // Create our own FBO for projectM to render into.
-    // This avoids all double-buffer/swap issues with the SDL window.
+    // Step 2: Create FBO
     if (!_create_fbo()) {
         ERR_PRINT("ProjectMWrapper: failed to create FBO");
         _destroy_gl_context();
@@ -216,18 +191,34 @@ bool ProjectMWrapper::initialize(int width, int height) {
     glBindFramebuffer(GL_FRAMEBUFFER, _fbo);
     glViewport(0, 0, _width, _height);
 
-    _pm = new projectM(settings, projectM::FLAG_DISABLE_PLAYLIST_LOAD);
-
+    // Step 3: Create projectM v4 instance (requires active GL context)
+    _pm = projectm_create();
     if (!_pm) {
-        ERR_PRINT("ProjectMWrapper: failed to create projectM instance");
+        ERR_PRINT("ProjectMWrapper: failed to create projectM v4 instance");
         _destroy_fbo();
         _destroy_gl_context();
         return false;
     }
 
-    _pm->projectM_resetGL(_width, _height);
-    UtilityFunctions::print("ProjectMWrapper: called projectM_resetGL(", _width, ",", _height, ")");
+    // Configure v4 settings via C API
+    projectm_set_window_size(_pm, _width, _height);
+    projectm_set_mesh_size(_pm, 48, 36);
+    projectm_set_fps(_pm, 60);
+    projectm_set_soft_cut_duration(_pm, 5.0);
+    projectm_set_preset_duration(_pm, 30.0);
+    projectm_set_hard_cut_enabled(_pm, false);
+    projectm_set_aspect_correction(_pm, true);
+    projectm_set_beat_sensitivity(_pm, 1.0f);
+    projectm_set_preset_locked(_pm, true); // We manage presets ourselves
 
+    // Set texture search paths (for preset textures)
+    const char* tex_paths[] = {
+        "/opt/homebrew/share/projectM/textures",
+        "/opt/homebrew/share/projectM"
+    };
+    projectm_set_texture_search_paths(_pm, tex_paths, 2);
+
+    // Allocate pixel readback buffer and texture
     _pixel_buffer.resize(_width * _height * 4);
 
     Ref<Image> img = Image::create(_width, _height, false, Image::FORMAT_RGBA8);
@@ -235,14 +226,19 @@ bool ProjectMWrapper::initialize(int width, int height) {
     _texture->set_image(img);
 
     _initialized = true;
-    UtilityFunctions::print("ProjectMWrapper: initialized (", _width, "x", _height, ") FBO mode, fbo=", _fbo);
+
+    // Print version
+    char* ver = projectm_get_version_string();
+    UtilityFunctions::print("ProjectMWrapper: v4 initialized (", _width, "x", _height, ") version=", ver ? ver : "unknown");
+    if (ver) projectm_free_string(ver);
+
     return true;
 }
 
 void ProjectMWrapper::shutdown() {
     if (_pm) {
         _make_gl_current();
-        delete _pm;
+        projectm_destroy(_pm);
         _pm = nullptr;
     }
     _destroy_fbo();
@@ -268,91 +264,61 @@ bool ProjectMWrapper::load_preset(const String &path) {
         abs_path = ProjectSettings::get_singleton()->globalize_path(path);
     }
 
-    // projectM v3: add preset URL to playlist, then select it
     std::string preset_path = abs_path.utf8().get_data();
-    std::string preset_name = abs_path.get_file().utf8().get_data();
 
-    // Build a rating list (required by API)
-    RatingList ratings(TOTAL_RATING_TYPES, 3);
+    _make_gl_current();
+    glBindFramebuffer(GL_FRAMEBUFFER, _fbo);
 
-    unsigned int index = _pm->addPresetURL(preset_path, preset_name, ratings);
-    _pm->selectPreset(index, true);
+    projectm_load_preset_file(_pm, preset_path.c_str(), true);
 
     UtilityFunctions::print("ProjectMWrapper: loaded preset '", abs_path, "'");
     return true;
 }
 
 String ProjectMWrapper::get_preset_name() const {
-    if (!_initialized || !_pm) {
-        return String();
-    }
-
-    unsigned int index = 0;
-    if (_pm->selectedPresetIndex(index)) {
-        std::string name = _pm->getPresetName(index);
-        return String(name.c_str());
-    }
+    // v4 doesn't have a direct "get current preset name" in the C API.
+    // We'd need to track it ourselves. Return empty for now.
     return String();
 }
 
 void ProjectMWrapper::feed_audio(const PackedFloat32Array &samples) {
-    if (!_initialized || !_pm) {
-        return;
-    }
+    if (!_initialized || !_pm) return;
+    if (samples.size() == 0) return;
 
-    if (samples.size() == 0) {
-        return;
-    }
-
-    // projectM v3: PCM::addPCMfloat expects mono float samples
-    // For stereo interleaved data, use addPCMfloat_2ch
-    PCM *pcm = _pm->pcm();
-    if (!pcm) {
-        return;
-    }
-
+    // v4: projectm_pcm_add_float(handle, samples, count_per_channel, channels)
     if (samples.size() % 2 == 0) {
-        // Stereo interleaved
-        pcm->addPCMfloat_2ch(samples.ptr(), samples.size() / 2);
+        projectm_pcm_add_float(_pm, samples.ptr(), samples.size() / 2, PROJECTM_STEREO);
     } else {
-        // Mono
-        pcm->addPCMfloat(samples.ptr(), samples.size());
+        projectm_pcm_add_float(_pm, samples.ptr(), samples.size(), PROJECTM_MONO);
     }
 }
 
 void ProjectMWrapper::render_frame() {
-    if (!_initialized || !_pm) {
-        return;
-    }
+    if (!_initialized || !_pm) return;
 
-    // Ensure our offscreen GL context is current
     _make_gl_current();
 
-    // Bind our FBO — projectM renders to whatever FBO is currently bound.
-    // Using our own FBO avoids double-buffer issues with the SDL window.
     glBindFramebuffer(GL_FRAMEBUFFER, _fbo);
     glViewport(0, 0, _width, _height);
 
-    _pm->renderFrame();
+    projectm_opengl_render_frame(_pm);
 
-    // projectM may have changed the FBO binding during its internal passes.
-    // Re-bind our FBO before readback.
+    // Re-bind our FBO in case projectM changed it
     GLint active_fbo = 0;
     glGetIntegerv(GL_FRAMEBUFFER_BINDING, &active_fbo);
     if ((GLuint)active_fbo != _fbo) {
-        UtilityFunctions::print("ProjectMWrapper: FBO clobbered! was=", active_fbo, " expected=", _fbo, " re-binding");
         glBindFramebuffer(GL_FRAMEBUFFER, _fbo);
         glViewport(0, 0, _width, _height);
     }
 
-    glFinish();  // Ensure rendering is complete before readback
+    glFinish();
 
-    // Read pixels directly from our FBO
+    // Read pixels
     glBindFramebuffer(GL_READ_FRAMEBUFFER, _fbo);
     glReadBuffer(GL_COLOR_ATTACHMENT0);
     glReadPixels(0, 0, _width, _height, GL_RGBA, GL_UNSIGNED_BYTE, _pixel_buffer.ptrw());
 
-    // Debug: sample pixels at startup, then every 5 seconds (300 frames at 60fps)
+    // Debug output (first few frames + periodic)
     bool should_debug = _debug_frame < 5 || (_debug_frame >= 55 && _debug_frame < 60)
         || (_debug_frame % 300 == 0);
     if (should_debug) {
@@ -362,27 +328,16 @@ void ProjectMWrapper::render_frame() {
         long r_sum = 0, g_sum = 0, b_sum = 0;
         for (int i = 0; i < total; i++) {
             int idx = i * 4;
-            if (px[idx] > 0 || px[idx+1] > 0 || px[idx+2] > 0) {
-                nonzero++;
-            }
-            r_sum += px[idx];
-            g_sum += px[idx+1];
-            b_sum += px[idx+2];
+            if (px[idx] > 0 || px[idx+1] > 0 || px[idx+2] > 0) nonzero++;
+            r_sum += px[idx]; g_sum += px[idx+1]; b_sum += px[idx+2];
         }
-        int avg_r = (int)(r_sum / total);
-        int avg_g = (int)(g_sum / total);
-        int avg_b = (int)(b_sum / total);
-        // Check current FBO binding
-        GLint current_fbo = 0;
-        glGetIntegerv(GL_FRAMEBUFFER_BINDING, &current_fbo);
         UtilityFunctions::print("ProjectMWrapper: frame ", _debug_frame,
             " nonzero=", nonzero, "/", total,
-            " avg_rgb=(", avg_r, ",", avg_g, ",", avg_b, ")",
-            " fbo_after_render=", current_fbo);
+            " avg_rgb=(", (int)(r_sum/total), ",", (int)(g_sum/total), ",", (int)(b_sum/total), ")");
     }
     _debug_frame++;
 
-    // Flip image vertically (GL reads bottom-up, Godot expects top-down)
+    // Flip vertically (GL bottom-up → Godot top-down)
     int row_bytes = _width * 4;
     uint8_t *buf = _pixel_buffer.ptrw();
     for (int y = 0; y < _height / 2; y++) {
@@ -406,24 +361,44 @@ Ref<ImageTexture> ProjectMWrapper::get_texture() const {
 }
 
 void ProjectMWrapper::set_viewport_size(int width, int height) {
-    if (!_initialized || !_pm) {
-        return;
-    }
+    if (!_initialized || !_pm) return;
 
     _make_gl_current();
 
     _width = width;
     _height = height;
 
-    // Recreate FBO at new size
     _destroy_fbo();
     _create_fbo();
     glBindFramebuffer(GL_FRAMEBUFFER, _fbo);
 
-    _pm->projectM_resetGL(width, height);
+    projectm_set_window_size(_pm, width, height);
 
-    // Reallocate pixel buffer
     _pixel_buffer.resize(width * height * 4);
 
     UtilityFunctions::print("ProjectMWrapper: viewport resized to ", width, "x", height);
+}
+
+// --- Runtime parameter control ---
+
+bool ProjectMWrapper::set_param(const String &name, float value) {
+    if (!_initialized || !_pm) return false;
+    std::string param_name = name.utf8().get_data();
+    return projectm_set_preset_param(_pm, param_name.c_str(), value);
+}
+
+float ProjectMWrapper::get_param(const String &name) const {
+    if (!_initialized || !_pm) return 0.0f;
+    std::string param_name = name.utf8().get_data();
+    return projectm_get_preset_param(_pm, param_name.c_str());
+}
+
+bool ProjectMWrapper::set_q_variable(int index, float value) {
+    if (!_initialized || !_pm) return false;
+    return projectm_set_q_variable(_pm, index, value);
+}
+
+float ProjectMWrapper::get_q_variable(int index) const {
+    if (!_initialized || !_pm) return 0.0f;
+    return projectm_get_q_variable(_pm, index);
 }
